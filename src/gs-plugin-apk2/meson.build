@@ -16,6 +16,7 @@ library(
   install_dir: plugin_install_dir,
   c_args: cargs,
   dependencies: [
+    apk_dep,
     gnome_software_dep,
     appstream_dep,
     gtk_dep,

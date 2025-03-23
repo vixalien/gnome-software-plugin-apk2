@@ -109,3 +109,34 @@ appstream_vapi = gnome.generate_vapi(
   ],
   install: true,
 )
+
+apk_gir = custom_target(
+  # 'gnome-software',
+  output: 'ApkPolkit2-0.gir',
+  command: [
+    find_program('g-ir-scanner'),
+    # '--warn-all',
+    '--c-include=apk-polkit-client.h',
+    '--include=Gtk-4.0',
+    '--namespace=ApkPolkit2',
+    '--pkg', 'apk-polkit-client-2',
+    '--library-path', apk_dep.get_variable('libdir') / apk_dep.name(),
+    '--library', '/usr/lib/libapk-polkit-client2.so.2',
+    '--output=@OUTPUT@',
+    '-I', '/usr/include/apk-polkit-2',
+    '/usr/include/apk-polkit-2/apk-polkit-client.h',
+    '/usr/include/apk-polkit-2/apk-polkit-client-bitflags.h',
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'gir-1.0',
+)
+
+apk_vapi = gnome.generate_vapi(
+  'apk-polkit-client-2',
+  sources: apk_gir.full_path(),
+  metadata_dirs: meson.current_source_dir(),
+  packages: [
+    gtk_dep.name(),
+  ],
+  install: true,
+)
