@@ -21,7 +21,16 @@ struct ApkdPackage {
 }
 
 public class GsPluginApk2 : Gs.Plugin {
-  private void* proxy;
+  private Object proxy;
+
+  construct {
+    add_rule(Gs.PluginRule.RUN_BEFORE, "icons");
+    add_rule(Gs.PluginRule.RUN_BEFORE, "generic-updates");
+    /* We want to get packages from appstream and refine them */
+    add_rule(Gs.PluginRule.RUN_BEFORE, "appstream");
+
+    this.proxy = null;
+  }
 
   /**
    * gs_plugin_apk_variant_to_apkd:
