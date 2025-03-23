@@ -1,4 +1,6 @@
-Plugin.cache_lookup skip=false
+Plugin
+  .cache_lookup skip=false
+  .get_system_bus_connection skip=false
 
 App
   .get_sources skip=false

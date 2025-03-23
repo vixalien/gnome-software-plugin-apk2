@@ -21,7 +21,7 @@ struct ApkdPackage {
 }
 
 public class GsPluginApk2 : Gs.Plugin {
-  private Object proxy;
+  private ApkPolkit2.Proxy proxy;
 
   construct {
     add_rule(Gs.PluginRule.RUN_BEFORE, "icons");
@@ -137,7 +137,7 @@ public class GsPluginApk2 : Gs.Plugin {
    * Convenience function that verifies that the app only has a single source.
    * Returns the corresponding source if successful or NULL if failed.
    */
-  public string ? get_source(Gs.App app) throws Gs.PluginError {
+  private string ? get_source(Gs.App app) throws Gs.PluginError {
     var sources = app.get_sources();
     if (sources.length != 1) {
       var message = "app %s has number of sources: %u != 1".printf(app.get_unique_id(), sources.length);
@@ -145,5 +145,25 @@ public class GsPluginApk2 : Gs.Plugin {
     }
 
     return sources[0].dup();
+  }
+
+  private new async void setup_async(Gs.Plugin plugin, Cancellable? cancellable) throws Error {
+    // TODO: fix $VERSION
+    debug(@"APK plugin version: VERSION");
+
+    try {
+      this.proxy = yield new ApkPolkit2.Proxy.for_connection.begin(
+                                                                   plugin.get_system_bus_connection(),
+                                                                   GLib.DBusProxyFlags.NONE,
+                                                                   "dev.Cogitri.apkPolkit2",
+                                                                   "/dev/Cogitri/apkPolkit2",
+                                                                   cancellable);
+    } catch (Error local_error) {
+      GLib.DBusError.strip_remote_error(local_error);
+      throw local_error;
+    }
+
+    /* Live update operations can take very, very long */
+    this.proxy.set_default_timeout(int.MAX);
   }
 }

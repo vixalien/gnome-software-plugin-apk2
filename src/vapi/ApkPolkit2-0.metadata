@@ -1,3 +1,5 @@
 Proxy
-  .new_for_bus skip=false symbol_type="constructor"
-  .new_for_bus_finish skip=false symbol_type="constructor"
+  .new symbol_type="constructor" name="new_for_connection"
+  .new_finish skip=false
+  .new_for_bus symbol_type="constructor"
+  .new_for_bus_finish skip=false
