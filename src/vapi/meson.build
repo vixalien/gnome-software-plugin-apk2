@@ -95,7 +95,17 @@ gnome_software_vapi = gnome.generate_vapi(
   sources: gnome_software_gir.full_path(),
   metadata_dirs: meson.current_source_dir(),
   packages: [
-    'appstream',
+    appstream_dep.name(),
+    gtk_dep.name(),
+  ],
+  install: true,
+)
+
+appstream_vapi = gnome.generate_vapi(
+  'appstream',
+  sources: '/usr/share/gir-1.0/AppStream-1.0.gir',
+  metadata_dirs: meson.current_source_dir(),
+  packages: [
     gtk_dep.name(),
   ],
   install: true,

@@ -1,4 +1,4 @@
-project('gnome-software-plugin-apk2', ['vala', 'c'], version: 'nightly')
+project('gs-plugin-apk2', ['vala', 'c'], version: 'nightly')
 
 subdir('src')
 
