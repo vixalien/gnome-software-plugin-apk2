@@ -96,18 +96,20 @@ public class GsPluginApk2 : Gs.Plugin {
 
     app = new Gs.App(pkg.name);
 
-    app.set_kind(As.ComponentKind.GENERIC);
-    app.set_bundle_kind(As.BundleKind.PACKAGE);
-    app.set_scope(As.ComponentScope.SYSTEM);
+    app.set_kind(AppStream.ComponentKind.GENERIC);
+    app.set_bundle_kind(AppStream.BundleKind.PACKAGE);
+    app.set_scope(AppStream.ComponentScope.SYSTEM);
     app.set_allow_cancel(false);
     app.add_source(pkg.name);
     app.set_name(Gs.AppQuality.UNKNOWN, pkg.name);
-    app.set_kind(As.ComponentKind.GENERIC);
-    app.set_kind(As.ComponentKind.GENERIC);
-    app.set_kind(As.ComponentKind.GENERIC);
-    app.set_kind(As.ComponentKind.GENERIC);
-    app.set_kind(As.ComponentKind.GENERIC);
-    app.set_kind(As.ComponentKind.GENERIC);
-    app.set_kind(As.ComponentKind.GENERIC);
+    app.set_kind(AppStream.ComponentKind.GENERIC);
+    app.set_kind(AppStream.ComponentKind.GENERIC);
+    app.set_kind(AppStream.ComponentKind.GENERIC);
+    app.set_kind(AppStream.ComponentKind.GENERIC);
+    app.set_kind(AppStream.ComponentKind.GENERIC);
+    app.set_kind(AppStream.ComponentKind.GENERIC);
+    app.set_kind(AppStream.ComponentKind.GENERIC);
+
+    return app;
   }
 }

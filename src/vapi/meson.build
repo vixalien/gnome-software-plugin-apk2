@@ -17,8 +17,6 @@ gnome_software_dep = dependency(
   # ],
 )
 
-gnomesoftware_include_files = []
-
 gs_headers = [
   'gs-app.h',
   'gs-app-list.h',
@@ -52,31 +50,39 @@ gs_headers = [
   'gs-worker-thread.h',
 ]
 
+gnomesoftware_include_files = []
+gnomesoftware_c_include_flags = []
+
 foreach header : gs_headers
   gnomesoftware_include_files += join_paths(
     gnome_software_dep.get_variable('includedir') / gnome_software_dep.name(),
     header,
   )
+  gnomesoftware_c_include_flags += '--c-include=' + header
 endforeach
 
 message(gnome_software_dep.get_variable('libdir'))
 
 gnome_software_gir = custom_target(
-  output: 'Gs-21.gir',
+  # 'gnome-software',
+  output: 'Gs-20.gir',
   command: [
     find_program('g-ir-scanner'),
     # '--warn-all',
+    '--c-include=gnome-software.h',
     '--include=AppStream-1.0',
     '--include=Gdk-4.0',
     '--include=Soup-3.0',
     '--namespace=Gs',
     '--identifier-prefix=Gs',
     '--symbol-prefix=gs',
-    '--pkg=gnome-software',
+    '--pkg', 'gnome-software',
     '--library-path', gnome_software_dep.get_variable('libdir') / gnome_software_dep.name(),
-    '--library', 'gnomesoftware',
+    '--library', '/usr/lib/gnome-software/libgnomesoftware.so.20',
     '-DI_KNOW_THE_GNOME_SOFTWARE_API_IS_SUBJECT_TO_CHANGE=1',
     '--output=@OUTPUT@',
+    '-I', '/usr/include/gnome-software',
+    '/usr/include/gnome-software/gnome-software.h',
     gnomesoftware_include_files,
   ],
   depends: [],
@@ -89,7 +95,7 @@ gnome_software_vapi = gnome.generate_vapi(
   sources: gnome_software_gir.full_path(),
   metadata_dirs: meson.current_source_dir(),
   packages: [
-    'AppStream-1.0',
+    'appstream',
     gtk_dep.name(),
   ],
   install: true,

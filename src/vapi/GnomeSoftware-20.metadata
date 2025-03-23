@@ -1,0 +1,3 @@
+Plugin.cache_lookup skip=false
+
+App.to_string#virtual_method skip
