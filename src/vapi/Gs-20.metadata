@@ -1,0 +1,6 @@
+Plugin.cache_lookup skip=false
+
+App
+  .get_sources skip=false
+  .get_sources type="GLib.GenericArray<string>"
+  .to_string#virtual_method skip

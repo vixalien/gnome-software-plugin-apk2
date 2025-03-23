@@ -112,12 +112,29 @@ public class GsPluginApk2 : Gs.Plugin {
     app.add_quirk(Gs.AppQuirk.PROVENANCE);
     app.set_metadata("GnomeSoftware::PackagingFormat", "apk");
     app.set_state(apk_to_app_state(pkg.packageState));
-    app.set_vesion(appk.version);
+    app.set_version(pkg.version);
     if (app.get_state() == Gs.AppState.UPDATABLE_LIVE) {
       app.set_update_version(pkg.stagingVersion);
     }
     plugin.cache_add(cache_name, app);
 
     return app;
+  }
+
+  /**
+   * gs_plugin_apk_get_source:
+   * @app: The GsApp
+   *
+   * Convenience function that verifies that the app only has a single source.
+   * Returns the corresponding source if successful or NULL if failed.
+   */
+  public string ? get_source(Gs.App app) throws Gs.PluginError {
+    var sources = app.get_sources();
+    if (sources.length != 1) {
+      var message = "app %s has number of sources: %u != 1".printf(app.get_unique_id(), sources.length);
+      throw new Gs.PluginError.FAILED(message);
+    }
+
+    return sources[0].dup();
   }
 }

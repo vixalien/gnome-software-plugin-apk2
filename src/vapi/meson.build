@@ -85,7 +85,6 @@ gnome_software_gir = custom_target(
     '/usr/include/gnome-software/gnome-software.h',
     gnomesoftware_include_files,
   ],
-  depends: [],
   install: true,
   install_dir: get_option('datadir') / 'gir-1.0',
 )
