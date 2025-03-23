@@ -102,13 +102,21 @@ public class GsPluginApk2 : Gs.Plugin {
     app.set_allow_cancel(false);
     app.add_source(pkg.name);
     app.set_name(Gs.AppQuality.UNKNOWN, pkg.name);
-    app.set_kind(AppStream.ComponentKind.GENERIC);
-    app.set_kind(AppStream.ComponentKind.GENERIC);
-    app.set_kind(AppStream.ComponentKind.GENERIC);
-    app.set_kind(AppStream.ComponentKind.GENERIC);
-    app.set_kind(AppStream.ComponentKind.GENERIC);
-    app.set_kind(AppStream.ComponentKind.GENERIC);
-    app.set_kind(AppStream.ComponentKind.GENERIC);
+    app.set_summary(Gs.AppQuality.UNKNOWN, pkg.description);
+    app.set_url(AppStream.UrlKind.HOMEPAGE, pkg.url);
+    app.set_origin("alpine");
+    app.set_origin_hostname("alpinelinux.org");
+    app.set_management_plugin(plugin);
+    app.set_size_installed(Gs.SizeType.VALID, pkg.installedSize);
+    app.set_size_download(Gs.SizeType.VALID, pkg.size);
+    app.add_quirk(Gs.AppQuirk.PROVENANCE);
+    app.set_metadata("GnomeSoftware::PackagingFormat", "apk");
+    app.set_state(apk_to_app_state(pkg.packageState));
+    app.set_vesion(appk.version);
+    if (app.get_state() == Gs.AppState.UPDATABLE_LIVE) {
+      app.set_update_version(pkg.stagingVersion);
+    }
+    plugin.cache_add(cache_name, app);
 
     return app;
   }
