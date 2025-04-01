@@ -1,3 +1,5 @@
+public const uint APK_POLKIT_CLIENT_DETAILS_FLAGS_ALL = 0xFF;
+
 enum ApkPackageState {
   Available,
   Installed,
@@ -94,7 +96,7 @@ public class GsPluginApk2 : Gs.Plugin {
    *
    * Convenience function which converts a ApkdPackage to a GsApp.
    **/
-  private Gs.App apk_package_to_app(Gs.Plugin plugin, ApkdPackage pkg) {
+  private Gs.App apk_package_to_app(ApkdPackage pkg) {
     string cache_name = "%s-%s".printf(pkg.name, pkg.version);
     // Gs.App app = plugin.cache_lookup(cache_name);
     Gs.App app = null;
@@ -115,7 +117,7 @@ public class GsPluginApk2 : Gs.Plugin {
     app.set_url(AppStream.UrlKind.HOMEPAGE, pkg.url);
     app.set_origin("alpine");
     app.set_origin_hostname("alpinelinux.org");
-    app.set_management_plugin(plugin);
+    app.set_management_plugin(this);
     app.set_size_installed(Gs.SizeType.VALID, pkg.installedSize);
     app.set_size_download(Gs.SizeType.VALID, pkg.size);
     app.add_quirk(Gs.AppQuirk.PROVENANCE);
@@ -125,45 +127,145 @@ public class GsPluginApk2 : Gs.Plugin {
     if (app.get_state() == Gs.AppState.UPDATABLE_LIVE) {
       app.set_update_version(pkg.stagingVersion);
     }
-    plugin.cache_add(cache_name, app);
+    cache_add(cache_name, app);
 
     return app;
   }
 
-  /**
-   * gs_plugin_apk_get_source:
-   * @app: The GsApp
-   *
-   * Convenience function that verifies that the app only has a single source.
-   * Returns the corresponding source if successful or NULL if failed.
-   */
-  private string ? get_source(Gs.App app) throws Gs.PluginError {
-    var sources = app.get_sources();
-    if (sources.length != 1) {
-      var message = "app %s has number of sources: %u != 1".printf(app.get_unique_id(), sources.length);
-      throw new Gs.PluginError.FAILED(message);
+  public async override Gs.AppList list_apps_async(Gs.AppQuery query,
+                                                   Gs.PluginListAppsFlags flags,
+                                                   Cancellable? cancellable) throws Error {
+    if (query == null ||
+        query.get_keywords() == null ||
+        query.get_n_properties_set() != 1) {
+      throw new IOError.NOT_SUPPORTED("Unsupported query");
     }
 
-    return sources[0].dup();
+    var is_source = query.get_is_source();
+    var is_for_updates = query.get_is_for_update();
+
+    /* Currently only support a subset of query properties, and only one set at once.
+     * This is a pattern taken from upstream!
+     */
+    if (is_source == is_for_updates ||
+        is_source == FALSE ||
+        is_for_updates == FALSE) {
+      throw new IOError.NOT_SUPPORTED("Unsupported query");
+    }
+
+    if (is_source == TRUE) {
+      debug("Listing repositories");
+
+      unowned Variant out_repositories;
+
+      try {
+        yield proxy.call_list_repositories(cancellable, out out_repositories);
+      } catch (Error local_error) {
+        DBusError.strip_remote_error(local_error);
+        throw local_error;
+      }
+
+      return list_repositories_cb(out_repositories);
+    } else if (is_for_updates == TRUE) {
+      /* I believe we have to invalidate the cache here! */
+      debug("Listing updates");
+
+      GLib.Variant upgradable_packages;
+      var list = new Gs.AppList();
+      try {
+        yield proxy.call_list_upgradable_packages(APK_POLKIT_CLIENT_DETAILS_FLAGS_ALL, cancellable, out upgradable_packages);
+      } catch (Error local_error) {
+        DBusError.strip_remote_error(local_error);
+        throw local_error;
+      }
+
+      debug(@"Found $(upgradable_packages.n_children())");
+
+      foreach (var dict in upgradable_packages) {
+        var pkg = ApkdPackage() {
+          packageState = Available
+        };
+        /* list_upgradable_packages doesn't have array input, thus no error output */
+        if (!apk_variant_to_apkd(dict, pkg)) {
+          assert_not_reached();
+        }
+
+        if (pkg.packageState == Upgradable || pkg.packageState == Downgradable) {
+          var app = apk_package_to_app(pkg);
+          list.add(app);
+        }
+      }
+
+      return list;
+    } else {
+      assert_not_reached();
+    }
   }
 
-  private new async void setup_async(Gs.Plugin plugin, Cancellable? cancellable) throws Error {
-    // TODO: fix $VERSION
-    debug(@"APK plugin version: VERSION");
+  private Gs.AppList list_repositories_cb(Variant repositories) throws Error {
+    var list = new Gs.AppList();
 
-    try {
-      this.proxy = yield new ApkPolkit2.Proxy.for_connection.begin(
-                                                                   plugin.get_system_bus_connection(),
-                                                                   GLib.DBusProxyFlags.NONE,
-                                                                   "dev.Cogitri.apkPolkit2",
-                                                                   "/dev/Cogitri/apkPolkit2",
-                                                                   cancellable);
-    } catch (Error local_error) {
-      GLib.DBusError.strip_remote_error(local_error);
-      throw local_error;
+    foreach (var repository in repositories) {
+      bool enabled;
+      string description;
+      string url;
+      repository.get("(bss)", out enabled, out description, out url);
+
+      var app = cache_lookup(url);
+      if (app != null) {
+        app.set_state(enabled ? Gs.AppState.INSTALLED : Gs.AppState.AVAILABLE);
+        list.add(app);
+        continue;
+      }
+
+      debug("Adding repository %s", url);
+
+      string url_scheme;
+      string url_path;
+      Uri.split(url, GLib.UriFlags.NONE, out url_scheme, null, null, null, out url_path, null, null);
+
+      /* Transform /some/repo/url into some.repo.url
+         We are not allowed to use '/' in the app id. */
+      var id = url_path.substring(1).replace("/", ".");
+
+      string repo_displayname;
+      if (url_scheme != null) {
+        /* If there is a scheme, it is a remote repository. Try to build
+         * a description depending on the information available,
+         * e.g: ["alpine", "edge", "community"] or ["postmarketos", "master"] */
+        var repo_parts = id.split(".", 3);
+
+        string repo = repo_parts[0];
+        if (repo_parts.length == 3) {
+          repo = "%s %s".printf(repo_parts[0], repo_parts[2]);
+        }
+
+        string release = "";
+        if (repo_parts.length >= 2) {
+          release = " (release %s)".printf(repo_parts[1]);
+        }
+
+        repo_displayname = _("Remote repository %s%s").printf(repo, release);
+      } else {
+        repo_displayname = _("Local repository %s").printf(url_path);
+      }
+
+      app = new Gs.App(id);
+      app.set_kind(AppStream.ComponentKind.REPOSITORY);
+      app.set_scope(AppStream.ComponentScope.SYSTEM);
+      app.set_state(enabled ? Gs.AppState.INSTALLED : Gs.AppState.AVAILABLE);
+      app.add_quirk(Gs.AppQuirk.NOT_LAUNCHABLE);
+      app.set_name(Gs.AppQuality.UNKNOWN, repo_displayname);
+      app.set_summary(Gs.AppQuality.UNKNOWN, description);
+      app.set_url(AppStream.UrlKind.HOMEPAGE, url);
+      app.set_metadata("apk::repo-url", url);
+      app.set_management_plugin(this);
+      cache_add(url, app);
+      list.add(app);
     }
 
-    /* Live update operations can take very, very long */
-    this.proxy.set_default_timeout(int.MAX);
+    debug("Added repositories");
+
+    return list;
   }
 }
