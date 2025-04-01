@@ -66,7 +66,7 @@ message(gnome_software_dep.get_variable('libdir'))
 
 gnome_software_gir = custom_target(
   # 'gnome-software',
-  output: 'Gs-45.gir',
+  output: 'Gs-48.gir',
   command: [
     find_program('g-ir-scanner'),
     # '--warn-all',
@@ -75,7 +75,7 @@ gnome_software_gir = custom_target(
     '--include=Gdk-4.0',
     '--include=Soup-3.0',
     '--namespace=Gs',
-    '--nsversion=45',
+    '--nsversion=48',
     '--identifier-prefix=Gs',
     '--symbol-prefix=gs',
     '--pkg', 'gnome-software',

@@ -1,6 +1,7 @@
 Plugin
   .cache_lookup skip=false
   .get_system_bus_connection skip=false
+  .status_update.app nullable
 
 App
   .get_sources skip=false
