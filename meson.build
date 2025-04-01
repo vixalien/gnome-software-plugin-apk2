@@ -4,6 +4,7 @@ valac = meson.get_compiler('vala')
 
 config_h = configuration_data()
 config_h.set_quoted('GETTEXT_PACKAGE', meson.project_name())
+config_h.set_quoted('PLUGIN_VERSION', meson.project_version())
 
 configure_file(output: 'config.h', configuration: config_h)
 
