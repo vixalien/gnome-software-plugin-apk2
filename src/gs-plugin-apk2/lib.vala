@@ -152,6 +152,20 @@ public class GsPluginApk2 : Gs.Plugin {
     return true;
   }
 
+  public async override bool refresh_metadata_async (uint64 cache_age_secs,
+                                                     Gs.PluginRefreshMetadataFlags flags,
+                                                     GLib.Cancellable? cancellable) throws Error {
+    debug ("Refreshing repositories");
+
+    status_update (null, DOWNLOADING);
+
+    yield proxy.call_update_repositories (cancellable);
+
+    updates_changed ();
+
+    return true;
+  }
+
   public async override Gs.AppList list_apps_async (Gs.AppQuery query,
                                                     Gs.PluginListAppsFlags flags,
                                                     Cancellable? cancellable) throws Error {
