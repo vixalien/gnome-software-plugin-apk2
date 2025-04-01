@@ -10,7 +10,7 @@ plugin_install_dir = gnome_software_dep.get_variable(
 )
 
 library(
-  meson.project_name(),
+  'gs_plugin_apk2',
   sources: files('lib.vala'),
   install: true,
   install_dir: plugin_install_dir,
