@@ -1,4 +1,5 @@
 cargs = [
+  '-DGETTEXT_PACKAGE="@0@"'.format(meson.project_name()),
   '-DG_LOG_DOMAIN="GsPluginApk2"',
   '-DI_KNOW_THE_GNOME_SOFTWARE_API_IS_SUBJECT_TO_CHANGE',
   '-DGS_PLUGIN_APK_VERSION="@0@"'.format(meson.project_version()),
@@ -15,7 +16,9 @@ library(
   install: true,
   install_dir: plugin_install_dir,
   c_args: cargs,
+  include_directories: confinc,
   dependencies: [
+    config_dep,
     apk_dep,
     gnome_software_dep,
     appstream_dep,

@@ -1,5 +1,19 @@
 project('gs-plugin-apk2', ['vala', 'c'], version: 'nightly')
 
+valac = meson.get_compiler('vala')
+
+config_h = configuration_data()
+config_h.set_quoted('GETTEXT_PACKAGE', meson.project_name())
+
+configure_file(output: 'config.h', configuration: config_h)
+
+config_dep = valac.find_library(
+  'config',
+  dirs: meson.project_source_root() / 'src' / 'shared',
+)
+
+confinc = include_directories('.')
+
 gnome_software_dep = dependency(
   'gnome-software',
   version: '>=46.0',
