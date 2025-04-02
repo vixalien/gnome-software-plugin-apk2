@@ -15,24 +15,6 @@ config_dep = valac.find_library(
 
 confinc = include_directories('.')
 
-gnome_software_dep = dependency(
-  'gnome-software',
-  version: '>=46.0',
-  fallback: ['gnome-software', 'libgnomesoftware_dep'],
-  default_options: [
-    'malcontent=false',
-    'packagekit=false',
-    'webapps=false',
-    'fwupd=false',
-    'hardcoded_foss_webapps=false',
-    'hardcoded_proprietary_webapps=false',
-    'external_appstream=true',
-    # TODO: disable this
-    'gtk_doc=true',
-    'sysprof=disabled',
-  ],
-)
-
 subdir('src')
 
 install_data(
