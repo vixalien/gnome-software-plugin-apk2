@@ -1,8 +1,10 @@
-Proxy
-  .new symbol_type="constructor" name="new_for_connection"
+Proxy name="DBusProxy"
+  .new name="new_for_connection"
   .new_finish skip=false
   .new_for_bus symbol_type="constructor"
   .new_for_bus_finish skip=false
+
+_ name="Proxy"
 
 call_list_repositories_finish.out_repositories out
 call_list_upgradable_packages_finish.out_packagesDetails out

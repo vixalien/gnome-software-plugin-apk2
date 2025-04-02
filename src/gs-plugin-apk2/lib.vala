@@ -23,7 +23,7 @@ struct ApkdPackage {
 }
 
 public class GsPluginApk2 : Gs.Plugin {
-  private ApkPolkit2.Proxy proxy;
+  private unowned ApkPolkit2.Proxy proxy;
 
   construct {
     add_rule (Gs.PluginRule.RUN_BEFORE, "icons");
@@ -136,18 +136,17 @@ public class GsPluginApk2 : Gs.Plugin {
     debug ("APK plugin version: %s", Config.PLUGIN_VERSION);
 
     try {
-      proxy = yield new ApkPolkit2.Proxy.for_connection (this.get_system_bus_connection (),
-                                                         DBusProxyFlags.NONE,
-                                                         "dev.Cogitri.apkPolkit2",
-                                                         "/dev/Cogitri/apkPolkit2",
-                                                         cancellable
-      );
+      proxy = yield ApkPolkit2.DBusProxy.new_for_connection (this.get_system_bus_connection (),
+        DBusProxyFlags.NONE,
+        "dev.Cogitri.apkPolkit2",
+        "/dev/Cogitri/apkPolkit2",
+        cancellable);
     } catch (Error local_error) {
       DBusError.strip_remote_error (local_error);
       throw local_error;
     }
 
-    proxy.set_default_timeout (int.MAX);
+    ((DBusProxy) proxy).set_default_timeout (int.MAX);
 
     return true;
   }
@@ -228,9 +227,7 @@ public class GsPluginApk2 : Gs.Plugin {
   public async override Gs.AppList list_apps_async (Gs.AppQuery query,
                                                     Gs.PluginListAppsFlags flags,
                                                     Cancellable? cancellable) throws Error {
-    if (query == null ||
-        query.get_keywords () == null ||
-        query.get_n_properties_set () != 1) {
+    if (query == null) {
       throw new IOError.NOT_SUPPORTED ("Unsupported query");
     }
 
@@ -433,7 +430,7 @@ public class GsPluginApk2 : Gs.Plugin {
       refine_apps_list.add (app);
     }
 
-    return true;
+    return false;
   }
 }
 
