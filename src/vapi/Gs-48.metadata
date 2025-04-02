@@ -4,8 +4,14 @@ Plugin
   .status_update.app nullable
   .list_apps_async throws="GLib.Error"
   .list_apps_async type="Gs.AppList"
+  .install_apps_async skip=false
 
 App
   .get_sources skip=false
   .get_sources type="GLib.GenericArray<string>"
   .to_string#virtual_method skip
+
+AppList
+  .index skip=false
+
+PluginError errordomain

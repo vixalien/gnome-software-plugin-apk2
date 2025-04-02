@@ -19,9 +19,9 @@ library(
   dependencies: [
     config_dep,
     apk_dep,
-    appstream_vapi,
+    # appstream_vapi,
     gnome_software_dep,
-    gnome_software_vapi,
+    # gnome_software_vapi,
     appstream_dep,
     gtk_dep,
     soup_dep,

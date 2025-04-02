@@ -166,6 +166,64 @@ public class GsPluginApk2 : Gs.Plugin {
     return true;
   }
 
+  /**
+   * gs_plugin_apk_get_source:
+   * @app: The GsApp
+   *
+   * Convenience function that verifies that the app only has a single source.
+   * Returns the corresponding source if successful or NULL if failed.
+   */
+  private string get_source (Gs.App app) throws Error {
+    var sources = app.get_sources ();
+    if (sources.length != 1) {
+      throw new Gs.PluginError.FAILED ("app %s has number of sources: %d != 1".printf (app.get_unique_id (), sources.length));
+    }
+    return sources[0];
+  }
+
+  public async override bool install_apps_async (Gs.AppList apps,
+                                                 Gs.PluginInstallAppsFlags flags,
+                                                 Gs.PluginProgressCallback progress_callback,
+                                                 Gs.PluginAppNeedsUserActionCallback app_needs_user_action_callback,
+                                                 GLib.Cancellable? cancellable) throws Error {
+    /* So far, the apk server only allows donwloading and installing all-together
+     * and we cannot really not download, or not apply the transaction */
+    if ((flags &
+         (Gs.PluginInstallAppsFlags.NO_DOWNLOAD
+          | Gs.PluginInstallAppsFlags.NO_APPLY)) != 0) {
+      throw new IOError.NOT_SUPPORTED ("Unsupported flags");
+    }
+
+    var add_list = new Gs.AppList ();
+
+    // TODO: why not make this iterable
+    for (int i = 0; i < apps.length (); i++) {
+      var app = apps.index (i);
+
+      /* enable repo, handled by dedicated function */
+      assert (app.get_kind () != AppStream.ComponentKind.REPOSITORY);
+      debug ("Considering app %s", app.get_unique_id ());
+
+      /* We can only install apps we know of */
+      if (!app.has_management_plugin (this)) {
+        debug ("App %s is not managed by us, not installing", app.get_unique_id ());
+        continue;
+      }
+
+      add_list.add (app);
+      app.set_state (INSTALLING);
+    }
+
+    var source_array = new string[add_list.length () + 1];
+    for (int i = 0; i < add_list.length (); i++) {
+      var app = add_list.index (i);
+      var source = get_source (app);
+      source_array[i] = source;
+    }
+
+    // TODO: can't find call_add_packages
+  }
+
   public async override Gs.AppList list_apps_async (Gs.AppQuery query,
                                                     Gs.PluginListAppsFlags flags,
                                                     Cancellable? cancellable) throws Error {
