@@ -222,6 +222,7 @@ public class GsPluginApk2 : Gs.Plugin {
     }
 
     // TODO: can't find call_add_packages
+    return true;
   }
 
   public async override Gs.AppList list_apps_async (Gs.AppQuery query,
@@ -359,6 +360,80 @@ public class GsPluginApk2 : Gs.Plugin {
     debug ("Added repositories");
 
     return list;
+  }
+
+  public async override bool refine_async (Gs.AppList list,
+                                           Gs.PluginRefineFlags flags,
+                                           GLib.Cancellable? cancellable) {
+    var missing_pkgname_list = new Gs.AppList ();
+    var refine_apps_list = new Gs.AppList ();
+
+    for (int i = 0; i < list.length (); i++) {
+      var app = list.index (i);
+      var bundle_kind = app.get_bundle_kind ();
+
+      if (app.has_quirk (IS_WILDCARD) ||
+          app.get_kind () == REPOSITORY) {
+        debug ("App %s has quirk WILDCARD or is a repository; not refining!", app.get_unique_id ());
+        continue;
+      }
+
+      /* Only package and unknown (desktop or metainfo file with upstream AS)
+       * belong to us */
+      if (bundle_kind != UNKNOWN &&
+          bundle_kind != PACKAGE) {
+        debug ("App %s has bundle kind %s; not refining!", app.get_unique_id (), bundle_kind.to_string ());
+        continue;
+      }
+
+      /* set management plugin for system apps just created by appstream */
+      if (app.has_management_plugin (null) &&
+          app.get_scope () == SYSTEM &&
+          app.get_metadata_item ("GnomeSoftware::Creator") == "appstream") {
+        /* If appstream couldn't assign a source, it means the app does not
+         * have an entry in the distribution-generated metadata. That should
+         * be fixed in the app. We try to workaround it by finding the
+         * owner of the metainfo or desktop file */
+        if (app.get_source_default () == null) {
+          debug ("App %s missing pkgname. Will try to resolve via metainfo/desktop file", app.get_unique_id ());
+          missing_pkgname_list.add (app);
+          continue;
+        }
+
+        debug ("Setting ourselves as management plugin for app %s", app.get_unique_id ());
+        app.set_management_plugin (this);
+      }
+
+      if (!app.has_management_plugin (this)) {
+        debug ("Ignoring app %s, not owned by apk", app.get_unique_id ());
+        continue;
+      }
+
+      var sources = app.get_sources ();
+      if (sources.length == 0) {
+        warning ("app %s has missing sources; skipping", app.get_unique_id ());
+        continue;
+      }
+      if (sources.length >= 2) {
+        warning ("app %s has %d > 1 sources; skipping", app.get_unique_id (), sources.length);
+        continue;
+      }
+
+      /* If we reached here, the app is valid and under our responsibility.
+         Therefore, we have to make sure that it stays valid. For that purpose,
+         if the state is unknown, force refining by setting the SETUP_ACTION
+         flag. This has the drawback that it forces a refine for all other apps.
+         The alternative would be to have yet another app list. But since this
+         is expected to happen very seldomly, it should be fine */
+      if (app.get_state () == UNKNOWN) {
+        flags |= REQUIRE_SETUP_ACTION;
+      }
+
+      debug ("Selecting app %s for refine", app.get_unique_id ());
+      refine_apps_list.add (app);
+    }
+
+    return true;
   }
 }
 

@@ -9,6 +9,7 @@ Plugin
 App
   .get_sources skip=false
   .get_sources type="GLib.GenericArray<string>"
+  .has_management_plugin.plugin nullable
   .to_string#virtual_method skip
 
 AppList
