@@ -119,6 +119,7 @@ apk_gir = custom_target(
     find_program('g-ir-scanner'),
     # '--warn-all',
     '--c-include=apk-polkit-client.h',
+    '--c-include=apk-polkit-client-bitflags.h',
     '--include=Gtk-4.0',
     '--namespace=ApkPolkit2',
     '--pkg', 'apk-polkit-client-2',

@@ -1,4 +1,4 @@
-public const uint APK_POLKIT_CLIENT_DETAILS_FLAGS_ALL = 0xFF;
+public const ApkPolkit2.DetailsFlags APK_POLKIT_CLIENT_DETAILS_FLAGS_ALL = 0xFF;
 
 enum ApkPackageState {
   Available,
@@ -272,9 +272,7 @@ public class GsPluginApk2 : Gs.Plugin {
       debug (@"Found $(upgradable_packages.n_children())");
 
       foreach (var dict in upgradable_packages) {
-        var pkg = ApkdPackage () {
-          packageState = Available
-        };
+        var pkg = ApkdPackage ();
         /* list_upgradable_packages doesn't have array input, thus no error output */
         if (!apk_variant_to_apkd (dict, pkg)) {
           assert_not_reached ();
@@ -359,13 +357,68 @@ public class GsPluginApk2 : Gs.Plugin {
     return list;
   }
 
+  private void set_app_metadata (Gs.App app, ApkdPackage package) {
+    if (package.version != null) {
+      app.set_version (package.version);
+    }
+    if (package.description != null) {
+      app.set_summary (Gs.AppQuality.UNKNOWN, package.description);
+    }
+    if (package.size != 0) {
+      app.set_size_download (Gs.SizeType.VALID, package.size);
+    }
+    if (package.installedSize != 0) {
+      app.set_size_installed (Gs.SizeType.VALID, package.installedSize);
+    }
+    if (package.url != null) {
+      app.set_url (AppStream.UrlKind.HOMEPAGE, package.url);
+    }
+    if (package.license != null) {
+      app.set_license (Gs.AppQuality.UNKNOWN, package.license);
+    }
+
+    debug ("State for pkg %s: %u", app.get_unique_id (), package.packageState);
+    /* FIXME: Currently apk-rs-polkit only returns states Available and Installed
+     * regardless of whether the packages are in a different state like upgraded.
+     * If we blindly set the state of the app to the one from package, we will
+     * in some circumstances overwrite the real state (that might have been).
+     * Specially important for functions like gs_plugin_add_updates that only set
+     * a temporary state. Therefore, here we only allow transitions which final
+     * state is legally GS_APP_STATE_AVAILABLE or GS_APP_STATE_INSTALLED.
+     */
+    switch (app.get_state ()) {
+    case UNKNOWN :
+    case QUEUED_FOR_INSTALL :
+    case REMOVING :
+    case INSTALLING :
+    case UNAVAILABLE:
+      app.set_state (apk_to_app_state (package.packageState));
+      break;
+    case AVAILABLE:
+    case INSTALLED:
+      break; /* Ignore changes between the states */
+    default:
+      warning ("Wrong state transition detected and avoided!");
+      break;
+    }
+
+    if (app.get_origin () == null)
+      app.set_origin ("alpine");
+    if (app.get_source_default () != package.name)
+      app.add_source (package.name);
+    app.set_management_plugin (this);
+    app.set_bundle_kind (AppStream.BundleKind.PACKAGE);
+  }
+
   public async override bool refine_async (Gs.AppList list,
                                            Gs.PluginRefineFlags flags,
-                                           GLib.Cancellable? cancellable) {
+                                           GLib.Cancellable? cancellable) throws Error {
     var missing_pkgname_list = new Gs.AppList ();
     var refine_apps_list = new Gs.AppList ();
 
-    for (int i = 0; i < list.length (); i++) {
+    debug ("Starting refining process");
+
+    for (uint i = 0; i < list.length (); i++) {
       var app = list.index (i);
       var bundle_kind = app.get_bundle_kind ();
 
@@ -430,7 +483,181 @@ public class GsPluginApk2 : Gs.Plugin {
       refine_apps_list.add (app);
     }
 
-    return false;
+    try {
+      yield fix_app_missing_appstream_async (missing_pkgname_list, cancellable);
+    } catch (Error local_error) {
+      // TODO: We should print a warning, but continue execution!
+      // There's no reason failing to find some package should stop
+      // the rest of the processing.
+      throw local_error;
+    }
+
+    yield refine_apk_packages_cb (refine_apps_list, missing_pkgname_list, flags, cancellable);
+
+    return true;
+  }
+
+  /**
+   * fix_app_missing_appstream:
+   * @plugin: The apk GsPlugin.
+   * @list: The GsAppList to resolve the metainfo/desktop files for.
+   * @cancellable: GCancellable to cancel synchronous dbus call.
+   * @task: FIXME!
+   *
+   * If the appstream plugin could not find the apps in the distribution metadata,
+   * it might have created the application from the metainfo or desktop files
+   * installed. It will contain some basic information, but the apk package to
+   * which it belongs (the source) needs to completed by us.
+   **/
+  private async bool fix_app_missing_appstream_async (Gs.AppList list,
+                                                      Cancellable? cancellable) throws Error {
+    if (list.length () == 0) {
+      return true;
+    }
+
+    debug ("Trying to find source packages for %u apps", list.length ());
+
+    var search_list = new Gs.AppList ();
+    string[] fn_array = {};
+
+    /* The appstream plugin sets some metadata on apps that come from desktop
+     * and metainfo files. If metadata is missing, just give-up */
+    for (int i = 0; i < list.length (); i++) {
+      var app = list.index (i);
+      var source_file = app.get_metadata_item ("appstream::source-file");
+      if (source_file != null) {
+        search_list.add (app);
+        fn_array += source_file;
+      } else {
+        warning ("Couldn't find 'appstream::source-file' metadata for %s", app.get_unique_id ());
+      }
+    }
+
+    if (fn_array.length == 0)
+      return true;
+
+    GLib.Variant search_results;
+
+    yield proxy.call_search_files_owners (fn_array, ApkPolkit2.DetailsFlags.NONE, cancellable, out search_results);
+
+    yield search_file_owners_cb (search_results, search_list, fn_array);
+
+    return true;
+  }
+
+  private async bool search_file_owners_cb (Variant search_results, Gs.AppList search_list, string[] fn_array) {
+    assert (search_results.n_children () == search_list.length ());
+    for (int i = 0; i < search_list.length (); i++) {
+      var app = search_list.index (i);
+      var apk_pkg = ApkdPackage ();
+
+      var apk_pkg_variant = search_results.get_child_value (i);
+      if (!apk_variant_to_apkd (apk_pkg_variant, apk_pkg)) {
+        warning ("Couldn't find any package owning file '%s'", fn_array[i]);
+        continue;
+      }
+
+      debug ("Found pkgname '%s' for app %s: adding source and setting management plugin", apk_pkg.name, app.get_unique_id ());
+      app.add_source (apk_pkg.name);
+      app.set_management_plugin (this);
+    }
+
+    return true;
+  }
+
+  private async bool refine_apk_packages_cb (Gs.AppList list,
+                                             Gs.AppList missing_pkgname_list,
+                                             Gs.PluginRefineFlags flags,
+                                             Cancellable? cancellable) throws Error {
+    if ((flags &
+         (Gs.PluginRefineFlags.REQUIRE_VERSION
+          | Gs.PluginRefineFlags.REQUIRE_ORIGIN
+          | Gs.PluginRefineFlags.REQUIRE_DESCRIPTION
+          | Gs.PluginRefineFlags.REQUIRE_SETUP_ACTION
+          | Gs.PluginRefineFlags.REQUIRE_SIZE
+          | Gs.PluginRefineFlags.REQUIRE_URL
+          | Gs.PluginRefineFlags.REQUIRE_LICENSE
+         )) == 0
+    ) {
+      debug ("Ignoring refine");
+      return true;
+    }
+
+    for (int i = 0; i < missing_pkgname_list.length (); i++) {
+      var app = missing_pkgname_list.index (i);
+      if (app.get_source_default () != null) {
+        list.add (app);
+      }
+    }
+
+    if (list.length () == 0) {
+      return true;
+    }
+
+    var details_flags = ApkPolkit2.DetailsFlags.PACKAGE_STATE;
+
+    if ((flags & Gs.PluginRefineFlags.REQUIRE_SETUP_ACTION) != 0) {
+      details_flags |= APK_POLKIT_CLIENT_DETAILS_FLAGS_ALL;
+    }
+    if ((flags & Gs.PluginRefineFlags.REQUIRE_VERSION) != 0) {
+      details_flags |= VERSION;
+    }
+    if ((flags & Gs.PluginRefineFlags.REQUIRE_DESCRIPTION) != 0) {
+      details_flags |= DESCRIPTION;
+    }
+    if ((flags & Gs.PluginRefineFlags.REQUIRE_SIZE) != 0) {
+      details_flags |= SIZE | INSTALLED_SIZE;
+    }
+    if ((flags & Gs.PluginRefineFlags.REQUIRE_URL) != 0) {
+      details_flags |= URL;
+    }
+    if ((flags & Gs.PluginRefineFlags.REQUIRE_LICENSE) != 0) {
+      details_flags |= LICENSE;
+    }
+
+    string[] source_array = new string[list.length ()];
+    for (int i = 0; i < list.length (); i++) {
+      var app = list.index (i);
+      debug ("Requesting details for %s", app.get_unique_id ());
+      source_array[i] = app.get_source_default ();
+    }
+
+    GLib.Variant apk_pkgs;
+
+    yield proxy.call_get_packages_details (source_array, details_flags, cancellable, out apk_pkgs);
+
+    return yield get_packages_details_cb (list, apk_pkgs);
+  }
+
+  private async bool get_packages_details_cb (Gs.AppList list, Variant apk_pkgs) {
+    assert (list.length () == apk_pkgs.n_children ());
+    for (int i = 0; i < list.length (); i++) {
+      var app = list.index (i);
+
+      debug ("Refining %s", app.get_unique_id ());
+      var apk_pkg_variant = apk_pkgs.get_child_value (i);
+      var apk_pkg = ApkdPackage ();
+
+      var source = app.get_source_default ();
+      if (!apk_variant_to_apkd (apk_pkg_variant, apk_pkg)) {
+        if (source != apk_pkg.name)
+          warning ("source: '%s' and the pkg name: '%s' differ", source, apk_pkg.name);
+        continue;
+      }
+
+      if (source != apk_pkg.name) {
+        warning ("source: '%s' and the pkg name: '%s' differ", source, apk_pkg.name);
+        continue;
+      }
+
+      set_app_metadata (app, apk_pkg);
+      /* We should only set generic apps for OS updates */
+      if (app.get_kind () == AppStream.ComponentKind.GENERIC) {
+        app.set_special_kind (Gs.AppSpecialKind.OS_UPDATE);
+      }
+    }
+
+    return true;
   }
 }
 
