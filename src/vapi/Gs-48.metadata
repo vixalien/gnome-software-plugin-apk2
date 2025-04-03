@@ -5,6 +5,7 @@ Plugin
   .list_apps_async throws="GLib.Error"
   .list_apps_async type="Gs.AppList"
   .install_apps_async skip=false
+  .app_launch_filtered_async skip=false
 
 App
   .get_sources skip=false

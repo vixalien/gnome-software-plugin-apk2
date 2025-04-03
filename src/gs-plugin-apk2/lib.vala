@@ -659,6 +659,24 @@ public class GsPluginApk2 : Gs.Plugin {
 
     return true;
   }
+
+  public async override bool launch_async (Gs.App app,
+                                           Gs.PluginLaunchFlags flags,
+                                           GLib.Cancellable? cancellable) throws Error {
+    return yield app_launch_filtered_async (app, flags, filter_desktop_file_cb, cancellable);
+  }
+
+  private bool filter_desktop_file_cb (Gs.Plugin plugin,
+                                       Gs.App app,
+                                       string filename,
+                                       GLib.KeyFile key_file) {
+    return !filename.contains ("/snapd/") &&
+           !filename.contains ("/snap/") &&
+           !filename.contains ("/flatpak/") &&
+           key_file.has_group ("Desktop Entry") &&
+           !key_file.has_key ("Desktop Entry", "X-Flatpak") &&
+           !key_file.has_key ("Desktop Entry", "X-SnapInstanceName");
+  }
 }
 
 public static Type gs_plugin_query_type () {
