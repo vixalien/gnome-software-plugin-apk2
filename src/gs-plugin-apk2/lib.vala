@@ -44,21 +44,21 @@ public class GsPluginApk2 : Gs.Plugin {
    * a boolean depending on whether the dictionary contains or not an error
    * field.
    **/
-  private bool apk_variant_to_apkd (Variant dict, ApkdPackage pkg) {
+  private bool apk_variant_to_apkd (Variant dict, ref ApkdPackage pkg) {
     string error_str;
-    if (!dict.lookup ("name", "&s", out pkg.name)) {
+    if (!dict.lookup ("name", "s", out pkg.name)) {
       return false;
     }
-    if (dict.lookup ("error", "&s", out error_str)) {
+    if (dict.lookup ("error", "s", out error_str)) {
       warning (@"Package $(pkg.name) could not be unpacked: $error_str");
       return false;
     }
 
-    dict.lookup ("version", "&s", out pkg.version);
-    dict.lookup ("description", "&s", out pkg.description);
-    dict.lookup ("license", "&s", out pkg.license);
-    dict.lookup ("url", "&s", out pkg.url);
-    dict.lookup ("staging_version", "&s", out pkg.stagingVersion);
+    dict.lookup ("version", "s", out pkg.version);
+    dict.lookup ("description", "s", out pkg.description);
+    dict.lookup ("license", "s", out pkg.license);
+    dict.lookup ("url", "s", out pkg.url);
+    dict.lookup ("staging_version", "s", out pkg.stagingVersion);
     dict.lookup ("installed_size", "t", out pkg.installedSize);
     dict.lookup ("size", "t", out pkg.size);
     dict.lookup ("package_state", "u", out pkg.packageState);
@@ -96,7 +96,7 @@ public class GsPluginApk2 : Gs.Plugin {
    *
    * Convenience function which converts a ApkdPackage to a GsApp.
    **/
-  private Gs.App apk_package_to_app (ApkdPackage pkg) {
+  private Gs.App apk_package_to_app (ref ApkdPackage pkg) {
     string cache_name = "%s-%s".printf (pkg.name, pkg.version);
     // Gs.App app = plugin.cache_lookup(cache_name);
     Gs.App app = null;
@@ -274,12 +274,12 @@ public class GsPluginApk2 : Gs.Plugin {
       foreach (var dict in upgradable_packages) {
         var pkg = ApkdPackage ();
         /* list_upgradable_packages doesn't have array input, thus no error output */
-        if (!apk_variant_to_apkd (dict, pkg)) {
+        if (!apk_variant_to_apkd (dict, ref pkg)) {
           assert_not_reached ();
         }
 
         if (pkg.packageState == Upgradable || pkg.packageState == Downgradable) {
-          var app = apk_package_to_app (pkg);
+          var app = apk_package_to_app (ref pkg);
           list.add (app);
         }
       }
@@ -357,7 +357,7 @@ public class GsPluginApk2 : Gs.Plugin {
     return list;
   }
 
-  private void set_app_metadata (Gs.App app, ApkdPackage package) {
+  private void set_app_metadata (Gs.App app, ref ApkdPackage package) {
     if (package.version != null) {
       app.set_version (package.version);
     }
@@ -552,7 +552,7 @@ public class GsPluginApk2 : Gs.Plugin {
       var apk_pkg = ApkdPackage ();
 
       var apk_pkg_variant = search_results.get_child_value (i);
-      if (!apk_variant_to_apkd (apk_pkg_variant, apk_pkg)) {
+      if (!apk_variant_to_apkd (apk_pkg_variant, ref apk_pkg)) {
         warning ("Couldn't find any package owning file '%s'", fn_array[i]);
         continue;
       }
@@ -639,7 +639,7 @@ public class GsPluginApk2 : Gs.Plugin {
       var apk_pkg = ApkdPackage ();
 
       var source = app.get_source_default ();
-      if (!apk_variant_to_apkd (apk_pkg_variant, apk_pkg)) {
+      if (!apk_variant_to_apkd (apk_pkg_variant, ref apk_pkg)) {
         if (source != apk_pkg.name)
           warning ("source: '%s' and the pkg name: '%s' differ", source, apk_pkg.name);
         continue;
@@ -650,7 +650,7 @@ public class GsPluginApk2 : Gs.Plugin {
         continue;
       }
 
-      set_app_metadata (app, apk_pkg);
+      set_app_metadata (app, ref apk_pkg);
       /* We should only set generic apps for OS updates */
       if (app.get_kind () == AppStream.ComponentKind.GENERIC) {
         app.set_special_kind (Gs.AppSpecialKind.OS_UPDATE);
