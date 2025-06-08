@@ -677,8 +677,143 @@ public class GsPluginApk2 : Gs.Plugin {
            !key_file.has_key ("Desktop Entry", "X-Flatpak") &&
            !key_file.has_key ("Desktop Entry", "X-SnapInstanceName");
   }
+
+  /**
+   * gs_plugin_apk_prepare_update:
+   * @plugin: The apk plugin
+   * @list: List of desired apps to update
+   * @ready: List to store apps once ready to be updated
+   *
+   * Convenience function which takes a list of apps to update and
+   * a list to store apps once they are ready to be updated. It iterate
+   * over the apps from @list, takes care that it is possible to update them,
+   * and when they are ready to be updated, adds them to @ready.
+   *
+   * Returns: Number of non-proxy apps added to the list
+   **/
+  private uint prepare_update (Gs.AppList list,
+                               ref Gs.AppList ready) {
+    uint added = 0;
+
+    for (uint i = 0; i < list.length (); i++) {
+      var app = list.index (i);
+
+      /* We shall only touch the apps if they are are owned by us or
+       * a proxy (and thus might contain some apps owned by us) */
+      if (app.has_quirk (IS_PROXY)) {
+        var proxy_added = prepare_update (app.get_related (), ref ready);
+        if (proxy_added > 0) {
+          app.set_state (INSTALLING);
+          ready.add (app);
+          added += proxy_added;
+        }
+        continue;
+      }
+
+      if (!app.has_management_plugin (this)) {
+        debug ("Ignoring update on '%s', not owned by APK", app.get_unique_id ());
+        continue;
+      }
+
+      app.set_state (INSTALLING);
+      ready.add (app);
+      added++;
+    }
+
+    return added;
+  }
+
+  public async override bool update_apps_async (Gs.AppList apps,
+                                                Gs.PluginUpdateAppsFlags flags,
+                                                Gs.PluginProgressCallback progress_callback,
+                                                Gs.PluginAppNeedsUserActionCallback app_needs_user_action_callback,
+                                                GLib.Cancellable? cancellable) throws Error {
+    debug ("Updating apps");
+
+    if ((flags & Gs.PluginUpdateAppsFlags.NO_DOWNLOAD) == 0) {
+      // This needs polkit changes. Ideally we'd download first, and
+      // apply from cache then. We should probably test this out in
+      // pmOS release upgrader script first
+      warning ("We don't implement 'NO_DOWNLOAD'");
+    }
+
+    if ((flags & Gs.PluginUpdateAppsFlags.NO_APPLY) != 0) {
+      return true;
+    }
+
+    /* update UI as this might take some time */
+    status_update (null, Gs.PluginStatus.WAITING);
+
+    var list_installing = new Gs.AppList ();
+
+    var num_sources = prepare_update (apps, ref list_installing);
+
+    debug ("Found %u apps to update", num_sources);
+
+    if (num_sources == 0) {
+      return true;
+    }
+
+    string[] source_array = {};
+    for (var i = 0; i < num_sources; i++) {
+      var app = list_installing.index (i);
+      var source = app.get_source_default ();
+      if (source != null) {
+        source_array += source;
+      }
+    }
+
+    try {
+      yield proxy.call_upgrade_packages (source_array, cancellable);
+    } catch (Error local_error) {
+      /* When and upgrade transaction failed, it could be out of two reasons:
+       * - The world constraints couldn't match. In that case, nothing was
+       * updated and we are safe to set all the apps to the recover state.
+       * - Actual errors happened! Could be a variety of things, including
+       * network timeouts, errors in packages' ownership and what not. This
+       * is dangerous, since the transaction was run half-way. Show an error
+       * that the user should run `apk fix` and that the system might be in
+       * an inconsistent state. We also have no idea of which apps succeded
+       * and which didn't, so also recover everything and hope the refine
+       * takes care of fixing things in the aftermath. */
+      DBusError.strip_remote_error (local_error);
+      for (uint i = 0; i < list_installing.length (); i++) {
+        var app = list_installing.index (i);
+        app.set_state_recover ();
+      }
+
+      message ("updating failed %s", local_error.message);
+
+      throw local_error;
+    }
+
+    for (uint i = 0; i < list_installing.length (); i++) {
+      var app = list_installing.index (i);
+      app.set_state (INSTALLED);
+    }
+
+    debug ("All apps updated correctly");
+
+    updates_changed ();
+    return true;
+  }
 }
 
+// TODO: find way to move this to the class
+public static void gs_plugin_adopt_app (Gs.Plugin self, Gs.App app) {
+  debug ("App to adopt: %s", app.get_id ());
+
+  if (app.get_bundle_kind () == AppStream.BundleKind.PACKAGE &&
+      app.get_scope () == AppStream.ComponentScope.SYSTEM) {
+    app.set_management_plugin (self);
+  }
+
+  if (app.get_kind () == AppStream.ComponentKind.OPERATING_SYSTEM) {
+    app.set_management_plugin (self);
+  }
+}
+
+// TODO: find a way to move this to the class
 public static Type gs_plugin_query_type () {
   return typeof (GsPluginApk2);
 }

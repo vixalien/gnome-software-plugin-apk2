@@ -6,12 +6,14 @@ Plugin
   .list_apps_async type="Gs.AppList"
   .install_apps_async skip=false
   .app_launch_filtered_async skip=false
+  .update_apps_async skip=false
 
 App
   .get_sources skip=false
   .get_sources type="unowned GLib.GenericArray<string>"
   .has_management_plugin.plugin nullable
   .to_string#virtual_method skip
+  .get_related skip=false
 
 AppList
   .index skip=false

@@ -11,6 +11,7 @@ call_list_upgradable_packages_finish.out_packagesDetails out
 call_search_files_owners_finish.out_packagesDetails out
 call_search_files_owners.arg_paths type="string[]"
 call_get_packages_details.arg_packages type="string[]"
+call_upgrade_packages.arg_packages type="string[]"
 call_get_packages_details_finish.out_packagesDetails out
 
 call_* parent="ApkPolkit2.Proxy"
