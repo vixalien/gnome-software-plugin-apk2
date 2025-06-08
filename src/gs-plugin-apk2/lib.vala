@@ -797,6 +797,59 @@ public class GsPluginApk2 : Gs.Plugin {
     updates_changed ();
     return true;
   }
+
+  public async override bool uninstall_apps_async (Gs.AppList list,
+                                                   Gs.PluginUninstallAppsFlags flags,
+                                                   Gs.PluginProgressCallback progress_callback,
+                                                   Gs.PluginAppNeedsUserActionCallback app_needs_user_action_callback,
+                                                   GLib.Cancellable? cancellable) throws GLib.Error {
+
+    var del_list = new Gs.AppList ();
+
+    for (var i = 0; i < list.length (); i++) {
+      var app = list.index (i);
+
+      /* disable repo, handled by dedicated function */
+      assert (app.get_kind () != AppStream.ComponentKind.REPOSITORY);
+      debug ("Considering app %s for uninstallation", app.get_unique_id ());
+
+      /* We can only remove apps we know of */
+      if (!app.has_management_plugin (this)) {
+        debug ("App %s is not managed by us, not uninstalling", app.get_unique_id ());
+      }
+
+      del_list.add (app);
+      app.set_state (REMOVING);
+    }
+
+    string[] source_array = {};
+    for (var i = 0; i < del_list.length (); i++) {
+      var app = del_list.index (i);
+      var source = app.get_source_default ();
+      if (source != null) {
+        source_array += source;
+      }
+    }
+
+    try {
+      yield proxy.call_delete_packages (source_array, cancellable);
+    } catch (Error local_error) {
+      for (uint i = 0; i < del_list.length (); i++) {
+        var app = del_list.index (i);
+        app.set_state_recover ();
+      }
+
+      DBusError.strip_remote_error (local_error);
+      throw local_error;
+    }
+
+    for (uint i = 0; i < del_list.length (); i++) {
+      var app = del_list.index (i);
+      app.set_state (AVAILABLE);
+    }
+
+    return true;
+  }
 }
 
 // TODO: find way to move this to the class
