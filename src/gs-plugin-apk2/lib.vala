@@ -1,4 +1,5 @@
 public const ApkPolkit2.DetailsFlags APK_POLKIT_CLIENT_DETAILS_FLAGS_ALL = 0xFF;
+public const uint GS_APP_PROGRESS_UNKNOWN = uint.MAX;
 
 enum ApkPackageState {
   Available,
@@ -864,6 +865,61 @@ public class GsPluginApk2 : Gs.Plugin {
     for (uint i = 0; i < del_list.length (); i++) {
       var app = del_list.index (i);
       app.set_state (AVAILABLE);
+    }
+
+    return true;
+  }
+
+  public async override bool install_repository_async (Gs.App repo,
+                                                       Gs.PluginManageRepositoryFlags flags,
+                                                       GLib.Cancellable? cancellable) throws Error {
+    assert (repo.get_kind () == AppStream.ComponentKind.REPOSITORY);
+
+    repo.set_state (INSTALLING);
+
+    return yield repo_update (repo, true, cancellable);
+  }
+
+  public async override bool remove_repository_async (Gs.App repo,
+                                                      Gs.PluginManageRepositoryFlags flags,
+                                                      GLib.Cancellable? cancellable) throws Error {
+    assert (repo.get_kind () == AppStream.ComponentKind.REPOSITORY);
+
+    repo.set_state (REMOVING);
+
+    return yield repo_update (repo, false, cancellable);
+  }
+
+  private async bool repo_update (Gs.App repo,
+                                  bool is_install,
+                                  GLib.Cancellable? cancellable) throws Error {
+    string action = is_install ? "Install" : "Remov";
+
+    if (!repo.has_management_plugin (this)) {
+      return true;
+    }
+
+    repo.set_progress (GS_APP_PROGRESS_UNKNOWN);
+
+    var url = repo.get_metadata_item ("apk::repo-url");
+    debug ("%ssing repository %s", action, url);
+
+    try {
+      if (is_install) {
+        yield proxy.call_add_repository (url, cancellable);
+
+        debug ("Installed repository %s", url);
+        repo.set_state (INSTALLED);
+      } else {
+        yield proxy.call_remove_repository (url, cancellable);
+
+        debug ("Removed repository %s", url);
+        repo.set_state (AVAILABLE);
+      }
+    } catch (Error local_error) {
+      repo.set_state_recover ();
+      DBusError.strip_remote_error (local_error);
+      throw local_error;
     }
 
     return true;
