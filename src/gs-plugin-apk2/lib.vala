@@ -213,14 +213,32 @@ public class GsPluginApk2 : Gs.Plugin {
       app.set_state (INSTALLING);
     }
 
-    var source_array = new string[add_list.length () + 1];
+    string[] source_array = {};
     for (int i = 0; i < add_list.length (); i++) {
       var app = add_list.index (i);
       var source = get_source (app);
-      source_array[i] = source;
+      if (source != null) {
+        source_array += source;
+      }
     }
 
-    // TODO: can't find call_add_packages
+    try {
+      yield proxy.call_add_packages (source_array, cancellable);
+    } catch (Error local_error) {
+      for (uint i = 0; i < add_list.length (); i++) {
+        var app = add_list.index (i);
+        app.set_state_recover ();
+      }
+
+      DBusError.strip_remote_error (local_error);
+      throw local_error;
+    }
+
+    for (uint i = 0; i < add_list.length (); i++) {
+      var app = add_list.index (i);
+      app.set_state (INSTALLED);
+    }
+
     return true;
   }
 

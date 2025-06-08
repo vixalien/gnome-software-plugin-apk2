@@ -14,6 +14,7 @@ call_get_packages_details.arg_packages type="string[]"
 call_upgrade_packages.arg_packages type="string[]"
 call_get_packages_details_finish.out_packagesDetails out
 call_delete_packages.arg_package type="string[]" name="arg_packages"
+call_add_packages.arg_package type="string[]" name="arg_packages"
 
 call_* parent="ApkPolkit2.Proxy"
 call_*.proxy type="ApkPolkit2.Proxy"
