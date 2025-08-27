@@ -8,12 +8,6 @@ namespace ApkPluginTest {
 
   private static void gs_plugins_apk_repo_actions (Gs.PluginLoader plugin_loader) {
     try {
-      // PluginJob plugin_job = null;
-      // Gs.AppList list = null;
-      // Gs.AppQuery query = null;
-      // Gs.App? del_repo = null;
-      // bool rc;
-
       // Get apps which are sources
       var query = new Gs.AppQuery ("is-source", Gs.AppQueryTristate.TRUE);
       Gs.PluginJob plugin_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
@@ -86,16 +80,6 @@ namespace ApkPluginTest {
     // updates.
     // * Execute update: Verify packages are updated? Needs Mock improvements!
     try {
-      // Gs.AppQuery query = null;
-      // Gs.PluginJob plugin_job = null;
-      // Gs.App? generic_app = null;
-      // Gs.App? desktop_app = null;
-      // Gs.App? system_app = null;
-      // Gs.App foreign_app = null;
-      // Gs.AppList update_list = null;
-      // bool ret;
-      // Gs.AppList? related = null;
-
       // List updates
       var query = new Gs.AppQuery ("is-for-update", Gs.AppQueryTristate.TRUE,
                                    "refine-flags", Gs.PluginRefineFlags.REQUIRE_UPDATE_DETAILS);
@@ -149,13 +133,8 @@ namespace ApkPluginTest {
 
   private static void gs_plugins_apk_app_install_remove (Gs.PluginLoader plugin_loader) {
     try {
-      // Gs.PluginJob plugin_job = null;
-      // Gs.App app = null;
       Gs.AppList list = new Gs.AppList ();
-      // Gs.Plugin plugin = null;
-      // Gs.AppQuery query = null;
-      string[] keywords = { "apk-test", null };
-      // bool rc;
+      string[] keywords = { "apk-test" };
 
       // Search for a non-installed app
       var query = new Gs.AppQuery ("keywords", keywords,
@@ -203,11 +182,7 @@ namespace ApkPluginTest {
 
   private static void gs_plugins_apk_refine_app_missing_source (Gs.PluginLoader plugin_loader) {
     try {
-      // PluginJob plugin_job = null;
-      // Gs.App app = null;
-      // Gs.AppQuery query = null;
       string[] keywords = { "no-source" };
-      // Plugin plugin = null;
 
       // Search for a non-installed app. Use a refine flag not being used
       // to force the run of the refine, but only fix the missing source
@@ -230,13 +205,6 @@ namespace ApkPluginTest {
   }
 
   public static int main (string[] args) {
-    // string xml = null;
-    // string tmp_root = null;
-    // PluginLoader plugin_loader = null;
-    // Settings settings = null;
-    // DBusConnection bus_connection = null;
-    // bool ret;
-    // int retval;
     string[] allowlist = {
       "apk2",
       "generic-updates",
