@@ -102,16 +102,6 @@ gnome_software_vapi = gnome.generate_vapi(
   install: true,
 )
 
-appstream_vapi = gnome.generate_vapi(
-  'appstream',
-  sources: '/usr/share/gir-1.0/AppStream-1.0.gir',
-  metadata_dirs: meson.current_source_dir(),
-  packages: [
-    gtk_dep.name(),
-  ],
-  install: true,
-)
-
 apk_gir = custom_target(
   # 'gnome-software',
   output: 'ApkPolkit2-0.gir',

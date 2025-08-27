@@ -15,9 +15,17 @@ config_dep = valac.find_library(
 
 confinc = include_directories('.')
 
+cargs = [
+  '-DGETTEXT_PACKAGE="@0@"'.format(meson.project_name()),
+  '-DG_LOG_DOMAIN="GsPluginApk2"',
+  '-DI_KNOW_THE_GNOME_SOFTWARE_API_IS_SUBJECT_TO_CHANGE',
+]
+
 subdir('src')
 
 install_data(
   'data/org.gnome.Software.Plugin.Apk2.metainfo.xml',
   install_dir: join_paths(get_option('datadir'), 'metainfo'),
 )
+
+subdir('tests')

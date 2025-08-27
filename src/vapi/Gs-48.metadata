@@ -15,8 +15,28 @@ App
   .has_management_plugin.plugin nullable
   .to_string#virtual_method skip
   .get_related skip=false
+  .dup_management_plugin skip=false
+
+AppQuery
+  .new skip=false type_arguments="string,va_list"
+  .is_for_update skip=false
 
 AppList
   .index skip=false
 
+PluginLoader
+  .* cheader_filename="gs-plugin-loader.h"
+  .job_process skip=false cheader_filename="gs-plugin-loader-sync.h"
+  .job_process_app skip=false cheader_filename="gs-plugin-loader-sync.h"
+  .setup.allowlist type="string[]" cheader_filename="gs-plugin-loader-sync.h"
+  .job_action cheader_filename="gs-plugin-loader-sync.h"
+  .app_create cheader_filename="gs-plugin-loader-sync.h"
+  .get_system_app cheader_filename="gs-plugin-loader-sync.h"
+  .setup cheader_filename="gs-plugin-loader-sync.h"
+
 PluginError errordomain
+
+test_* cheader_filename="gs-test.h"
+test_init.pargv type="string[]"
+// test_init.pargv array_length_idx=0
+test_init.pargc type="int*"
