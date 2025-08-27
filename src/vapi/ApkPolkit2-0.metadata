@@ -22,3 +22,5 @@ complete_* parent="ApkPolkit2.Proxy"
 complete_*.object type="ApkPolkit2.Proxy"
 emit_progress_notification parent="ApkPolkit2.Proxy"
 emit_progress_notification.object type="ApkPolkit2.Proxy"
+
+DetailsFlags cheader_filename="apk-polkit-client-bitflags.h"

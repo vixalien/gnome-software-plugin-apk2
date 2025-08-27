@@ -21,6 +21,9 @@ cargs = [
   '-DI_KNOW_THE_GNOME_SOFTWARE_API_IS_SUBJECT_TO_CHANGE',
 ]
 
+fs = import('fs')
+gnome = import('gnome')
+
 subdir('src')
 
 install_data(
