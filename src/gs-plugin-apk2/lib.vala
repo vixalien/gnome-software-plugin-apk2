@@ -27,10 +27,10 @@ public class GsPluginApk2 : Gs.Plugin {
   private unowned ApkPolkit2.Proxy proxy;
 
   construct {
-    add_rule (Gs.PluginRule.RUN_BEFORE, "icons");
-    add_rule (Gs.PluginRule.RUN_BEFORE, "generic-updates");
+    add_rule (RUN_BEFORE, "icons");
+    add_rule (RUN_BEFORE, "generic-updates");
     /* We want to get packages from appstream and refine them */
-    add_rule (Gs.PluginRule.RUN_BEFORE, "appstream");
+    add_rule (RUN_AFTER, "appstream");
 
     this.proxy = null;
   }
@@ -288,7 +288,7 @@ public class GsPluginApk2 : Gs.Plugin {
         throw local_error;
       }
 
-      debug (@"Found $(upgradable_packages.n_children())");
+      debug (@"Found $(upgradable_packages.n_children()) upgradable packages");
 
       foreach (var dict in upgradable_packages) {
         var pkg = ApkdPackage ();
@@ -835,6 +835,7 @@ public class GsPluginApk2 : Gs.Plugin {
       /* We can only remove apps we know of */
       if (!app.has_management_plugin (this)) {
         debug ("App %s is not managed by us, not uninstalling", app.get_unique_id ());
+        continue;
       }
 
       del_list.add (app);

@@ -29,7 +29,7 @@ namespace ApkPluginTest {
         var url = repo.get_url (AppStream.UrlKind.HOMEPAGE);
         var plugin = repo.dup_management_plugin () as Gs.Plugin;
         assert_cmpint (repo.get_kind (), CompareOperator.EQ, AppStream.ComponentKind.REPOSITORY);
-        assert_cmpstr (plugin.get_name (), CompareOperator.EQ, "apk");
+        assert_cmpstr (plugin.get_name (), CompareOperator.EQ, "apk2");
         if (url == "https://pmos.org/pmos/master") {
           assert_cmpint (repo.get_state (), CompareOperator.EQ, Gs.AppState.AVAILABLE);
         } else {
@@ -106,13 +106,13 @@ namespace ApkPluginTest {
 
       assert_cmpuint (update_list.length (), CompareOperator.EQ, 2);
       // Check desktop app
-      var desktop_app = update_list.index (0);
+      var desktop_app = update_list.index (1);
       assert_nonnull (desktop_app);
       assert_false (desktop_app.has_quirk (Gs.AppQuirk.IS_PROXY));
       assert_cmpstr (desktop_app.get_name (), CompareOperator.EQ, "ApkTestApp");
       assert_cmpuint (desktop_app.get_state (), CompareOperator.EQ, Gs.AppState.UPDATABLE_LIVE);
-      // Check generic proxy app
-      var generic_app = update_list.index (1);
+      //// Check generic proxy app
+      var generic_app = update_list.index (0);
       assert_nonnull (generic_app);
       assert_true (generic_app.has_quirk (Gs.AppQuirk.IS_PROXY));
       var related = generic_app.get_related ();
@@ -169,7 +169,7 @@ namespace ApkPluginTest {
 
       // make sure we got the correct app and is managed by us
       assert_cmpstr (app.get_id (), CompareOperator.EQ, "apk-test-app.desktop");
-      assert_cmpstr (plugin.get_name (), CompareOperator.EQ, "apk");
+      assert_cmpstr (plugin.get_name (), CompareOperator.EQ, "apk2");
       assert_cmpint (app.get_kind (), CompareOperator.EQ, AppStream.ComponentKind.DESKTOP_APP);
       assert_cmpint (app.get_scope (), CompareOperator.EQ, AppStream.ComponentScope.SYSTEM);
       assert_cmpint (app.get_state (), CompareOperator.EQ, Gs.AppState.AVAILABLE);
@@ -206,7 +206,7 @@ namespace ApkPluginTest {
       // PluginJob plugin_job = null;
       // Gs.App app = null;
       // Gs.AppQuery query = null;
-      string[] keywords = { "no-source", null };
+      string[] keywords = { "no-source" };
       // Plugin plugin = null;
 
       // Search for a non-installed app. Use a refine flag not being used
@@ -222,7 +222,7 @@ namespace ApkPluginTest {
 
       // make sure we got the correct app, is managed by us and has the source set
       assert_cmpstr (app.get_id (), CompareOperator.EQ, "no-source-app.desktop");
-      assert_cmpstr (plugin.get_name (), CompareOperator.EQ, "apk");
+      assert_cmpstr (plugin.get_name (), CompareOperator.EQ, "apk2");
       assert_nonnull (app.get_source_default ());
     } catch (Error error) {
       assert_no_error (error);
@@ -238,13 +238,13 @@ namespace ApkPluginTest {
     // bool ret;
     // int retval;
     string[] allowlist = {
-      "apk",
+      "apk2",
       "generic-updates",
       "appstream",
       null
     };
 
-    Gs.test_init (&args.length, args);
+    Gs.test_init (&args.length, (char* * *) &args);
 
     int retval;
 
@@ -292,20 +292,25 @@ namespace ApkPluginTest {
       plugin_loader.add_location (SYSTEMPLUGINDIR);
       var ret = plugin_loader.setup (allowlist, null, null);
       assert_true (ret);
-      assert_true (plugin_loader.get_enabled ("apk"));
+      assert_true (plugin_loader.get_enabled ("apk2"));
       assert_true (plugin_loader.get_enabled ("generic-updates"));
       assert_true (plugin_loader.get_enabled ("appstream"));
 
-      Test.add_data_func ("/gnome-software/plugins/apk/repo-actions",
-                          (TestDataFunc) gs_plugins_apk_repo_actions);
-      Test.add_data_func ("/gnome-software/plugins/apk/app-install-remove",
-                          (TestDataFunc) gs_plugins_apk_app_install_remove);
-      Test.add_data_func ("/gnome-software/plugins/apk/updates",
-                          (TestDataFunc) gs_plugins_apk_updates);
-      Test.add_data_func ("/gnome-software/plugins/apk/missing-source",
-                          (TestDataFunc) gs_plugins_apk_refine_app_missing_source);
-      Test.add_data_func ("/gnome-software/plugins/apk/refine-app-missing-source",
-                          (TestDataFunc) gs_plugins_apk_refine_app_missing_source);
+      Test.add_data_func ("/gnome-software/plugins/apk/repo-actions", () => {
+        gs_plugins_apk_repo_actions (plugin_loader);
+      });
+      Test.add_data_func ("/gnome-software/plugins/apk/app-install-remove", () => {
+        gs_plugins_apk_app_install_remove (plugin_loader);
+      });
+      Test.add_data_func ("/gnome-software/plugins/apk/updates", () => {
+        gs_plugins_apk_updates (plugin_loader);
+      });
+      Test.add_data_func ("/gnome-software/plugins/apk/missing-source", () => {
+        gs_plugins_apk_refine_app_missing_source (plugin_loader);
+      });
+      Test.add_data_func ("/gnome-software/plugins/apk/refine-app-missing-source", () => {
+        gs_plugins_apk_refine_app_missing_source (plugin_loader);
+      });
       retval = Test.run ();
 
       /* Clean up. */

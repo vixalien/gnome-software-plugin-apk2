@@ -37,6 +37,6 @@ PluginLoader
 PluginError errordomain
 
 test_* cheader_filename="gs-test.h"
-test_init.pargv type="string[]"
+test_init.pargv type="char***"
 // test_init.pargv array_length_idx=0
 test_init.pargc type="int*"

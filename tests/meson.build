@@ -4,7 +4,7 @@ cargs = [
 
 # Create a configuration file for compile-time constants
 test_config_h = configuration_data()
-test_config_h.set_quoted('LOCALPLUGINDIR', meson.project_build_root())
+test_config_h.set_quoted('LOCALPLUGINDIR', fs.parent(plugin_apk_lib.full_path()))
 test_config_h.set_quoted('SYSTEMPLUGINDIR', plugin_install_dir)
 
 config_vapi = valac.find_library('config', dirs: meson.current_source_dir())
@@ -33,6 +33,8 @@ test = executable(
     cargs,
     '-I/usr/include/gnome-software',
     # '-DGSTEST_H',
+    # '-g',
+    # '-O0',
     '-DLOCALPLUGINDIR="@0@"'.format(meson.project_build_root()),
     '-DSYSTEMPLUGINDIR="@0@"'.format(plugin_install_dir),
   ],

@@ -1,5 +1,3 @@
-gnome = import('gnome')
-
 gs_headers = [
   'gnome-software.h',
   'gs-app.h',
