@@ -225,26 +225,26 @@ namespace ApkPluginTest {
       Environment.set_variable ("GS_XMLB_VERBOSE", "1", true);
 
       /* Adapted from upstream dummy/gs-self-test.c */
-      var xml = "<?xml version=\"1.0\"?>\n"
-        + "<components origin=\"alpine-test\" version=\"0.9\">\n"
-        + "  <component type=\"desktop\">\n"
-        + "    <id>apk-test-app.desktop</id>\n"
-        + "    <name>ApkTestApp</name>\n"
-        + "    <summary>Alpine Package Keeper test app</summary>\n"
-        + "    <pkgname>apk-test-app</pkgname>\n"
-        + "  </component>\n"
-        + "  <component type=\"desktop\">\n"
-        + "    <id>no-source-app.desktop</id>\n"
-        + "    <name>NoSourceApp</name>\n"
-        + "    <summary>App with missing source in metadata</summary>\n"
-        + "    <info>\n"
-        + "      <filename>/usr/share/apps/no-source-app.desktop</filename>\n"
-        + "    </info>\n"
-        + "  </component>\n"
-        + "  <info>\n"
-        + "    <scope>system</scope>\n"
-        + "  </info>\n"
-        + "</components>\n";
+      var xml = """<?xml version="1.0"?>
+<components origin="alpine-test" version="0.9">
+  <component type="desktop">
+    <id>apk-test-app.desktop</id>
+    <name>ApkTestApp</name>
+    <summary>Alpine Package Keeper test app</summary>
+    <pkgname>apk-test-app</pkgname>
+  </component>
+  <component type="desktop">
+    <id>no-source-app.desktop</id>
+    <name>NoSourceApp</name>
+    <summary>App with missing source in metadata</summary>
+    <info>
+      <filename>/usr/share/apps/no-source-app.desktop</filename>
+    </info>
+  </component>
+  <info>
+    <scope>system</scope>
+  </info>
+</components>""";
       Environment.set_variable ("GS_SELF_TEST_APPSTREAM_XML", xml, true);
 
       /* Needed for appstream plugin to store temporary data! */
