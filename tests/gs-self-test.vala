@@ -141,7 +141,8 @@ namespace ApkPluginTest {
                                    // We force refine to take ownership
                                    "refine-flags", Gs.PluginRefineFlags.REQUIRE_SETUP_ACTION);
       Gs.PluginJob plugin_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
-      var app = plugin_loader.job_process_app (plugin_job, null);
+      var success = plugin_loader.job_process (plugin_job, null);
+      var app = plugin_job.get_app ();
       Gs.test_flush_main_context ();
       assert (app != null);
       var plugin = app.dup_management_plugin () as Gs.Plugin;
@@ -189,7 +190,8 @@ namespace ApkPluginTest {
       var query = new Gs.AppQuery ("keywords", keywords,
                                    "refine-flags", Gs.PluginRefineFlags.REQUIRE_KUDOS);
       var plugin_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
-      var app = plugin_loader.job_process_app (plugin_job, null);
+      plugin_loader.job_process (plugin_job, null);
+      var app = plugin_job.get_app ();
       Gs.test_flush_main_context ();
       assert (app != null);
       var plugin = app.dup_management_plugin () as Gs.Plugin;
