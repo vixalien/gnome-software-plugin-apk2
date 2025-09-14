@@ -157,8 +157,6 @@ public class GsPluginApk2 : Gs.Plugin {
                                                      GLib.Cancellable? cancellable) throws Error {
     debug ("Refreshing repositories");
 
-    status_update (null, DOWNLOADING);
-
     yield proxy.call_update_repositories (cancellable);
 
     updates_changed ();
@@ -760,9 +758,6 @@ public class GsPluginApk2 : Gs.Plugin {
       return true;
     }
 
-    /* update UI as this might take some time */
-    status_update (null, Gs.PluginStatus.WAITING);
-
     var list_installing = new Gs.AppList ();
 
     var num_sources = prepare_update (apps, ref list_installing);
@@ -779,6 +774,7 @@ public class GsPluginApk2 : Gs.Plugin {
       var source = app.get_source_default ();
       if (source != null) {
         source_array += source;
+        app.set_state (Gs.AppState.DOWNLOADING);
       }
     }
 
