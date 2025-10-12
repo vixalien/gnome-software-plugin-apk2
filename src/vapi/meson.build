@@ -85,7 +85,6 @@ gnome_software_gir = custom_target(
     '/usr/include/gnome-software/gnome-software.h',
     gnomesoftware_include_files,
   ],
-  install: true,
   install_dir: get_option('datadir') / 'gir-1.0',
 )
 
@@ -109,7 +108,6 @@ gnome_software_vapi = gnome.generate_vapi(
     appstream_dep.name(),
     gtk_dep.name(),
   ],
-  install: true,
 )
 
 apk_gir = custom_target(
@@ -131,7 +129,6 @@ apk_gir = custom_target(
     '/usr/include/apk-polkit-2/apk-polkit-client-bitflags.h',
     '--warn-all',
   ],
-  install: true,
   install_dir: get_option('datadir') / 'gir-1.0',
 )
 
@@ -142,5 +139,4 @@ apk_vapi = gnome.generate_vapi(
   packages: [
     gtk_dep.name(),
   ],
-  install: true,
 )
