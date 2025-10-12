@@ -10,8 +10,9 @@ namespace ApkPluginTest {
     try {
       // Get apps which are sources
       var query = new Gs.AppQuery ("is-source", Gs.AppQueryTristate.TRUE);
-      Gs.PluginJob plugin_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
-      var list = plugin_loader.job_process (plugin_job, null);
+      var list_apps_plugin_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
+      var ret = plugin_loader.job_process (list_apps_plugin_job, null);
+      var list = list_apps_plugin_job.get_result_list ();
       Gs.test_flush_main_context ();
       assert_nonnull (list);
 
@@ -33,9 +34,9 @@ namespace ApkPluginTest {
       }
 
       // Remove repository
-      plugin_job = new Gs.PluginJobManageRepository (del_repo,
-                                                     Gs.PluginManageRepositoryFlags.REMOVE);
-      var rc = plugin_loader.job_action (plugin_job, null);
+      var remove_repo_plugin_job = new Gs.PluginJobManageRepository (del_repo,
+                                                                     Gs.PluginManageRepositoryFlags.REMOVE);
+      var rc = plugin_loader.job_process (remove_repo_plugin_job, null);
       Gs.test_flush_main_context ();
       assert_true (rc);
 
@@ -46,9 +47,9 @@ namespace ApkPluginTest {
       assert_cmpint (del_repo.get_state (), CompareOperator.EQ, Gs.AppState.AVAILABLE);
 
       // gs_plugin_install_repo (reinstall it, check it works)
-      plugin_job = new Gs.PluginJobManageRepository (del_repo,
-                                                     Gs.PluginManageRepositoryFlags.INSTALL);
-      rc = plugin_loader.job_action (plugin_job, null);
+      var install_repo_plugin_job = new Gs.PluginJobManageRepository (del_repo,
+                                                                      Gs.PluginManageRepositoryFlags.INSTALL);
+      rc = plugin_loader.job_process (install_repo_plugin_job, null);
       Gs.test_flush_main_context ();
       assert_true (rc);
 
@@ -58,9 +59,9 @@ namespace ApkPluginTest {
 
       // Refresh repos.
       // TODO: Check logs!
-      plugin_job = new Gs.PluginJobRefreshMetadata (uint64.MAX,
-                                                    Gs.PluginRefreshMetadataFlags.NONE);
-      rc = plugin_loader.job_action (plugin_job, null);
+      var refresh_plugin_job = new Gs.PluginJobRefreshMetadata (uint64.MAX,
+                                                                Gs.PluginRefreshMetadataFlags.NONE);
+      rc = plugin_loader.job_process (refresh_plugin_job, null);
       Gs.test_flush_main_context ();
       assert_true (rc);
     } catch (Error error) {
@@ -82,9 +83,10 @@ namespace ApkPluginTest {
     try {
       // List updates
       var query = new Gs.AppQuery ("is-for-update", Gs.AppQueryTristate.TRUE,
-                                   "refine-flags", Gs.PluginRefineFlags.REQUIRE_UPDATE_DETAILS);
-      Gs.PluginJob plugin_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
-      var update_list = plugin_loader.job_process (plugin_job, null);
+                                   "refine-require-flags", Gs.PluginRefineRequireFlags.UPDATE_DETAILS);
+      var list_apps_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
+      var rc = plugin_loader.job_process (list_apps_job, null);
+      var update_list = list_apps_job.get_result_list ();
       Gs.test_flush_main_context ();
       assert_nonnull (update_list);
 
@@ -109,9 +111,9 @@ namespace ApkPluginTest {
       foreign_app.set_state (Gs.AppState.UPDATABLE_LIVE);
       update_list.add (foreign_app); // No management plugin, should get ignored!
       // Execute update!
-      plugin_job = new Gs.PluginJobUpdateApps (update_list,
-                                               Gs.PluginUpdateAppsFlags.NO_DOWNLOAD);
-      var ret = plugin_loader.job_action (plugin_job, null);
+      var update_job = new Gs.PluginJobUpdateApps (update_list,
+                                                   Gs.PluginUpdateAppsFlags.NO_DOWNLOAD);
+      var ret = plugin_loader.job_process (update_job, null);
       Gs.test_flush_main_context ();
       assert_true (ret);
 
@@ -139,10 +141,10 @@ namespace ApkPluginTest {
       // Search for a non-installed app
       var query = new Gs.AppQuery ("keywords", keywords,
                                    // We force refine to take ownership
-                                   "refine-flags", Gs.PluginRefineFlags.REQUIRE_SETUP_ACTION);
-      Gs.PluginJob plugin_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
-      var success = plugin_loader.job_process (plugin_job, null);
-      var app = plugin_job.get_app ();
+                                   "refine-require-flags", Gs.PluginRefineRequireFlags.SETUP_ACTION);
+      var list_apps_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
+      var success = plugin_loader.job_process (list_apps_job, null);
+      var app = list_apps_job.get_result_list ().index (0);
       Gs.test_flush_main_context ();
       assert (app != null);
       var plugin = app.dup_management_plugin () as Gs.Plugin;
@@ -156,9 +158,10 @@ namespace ApkPluginTest {
 
       // execute installation action
       list.add (app);
-      plugin_job = new Gs.PluginJobInstallApps (list,
-                                                Gs.PluginInstallAppsFlags.NONE);
-      var rc = plugin_loader.job_action (plugin_job, null);
+
+      var install_job = new Gs.PluginJobInstallApps (list,
+                                                     Gs.PluginInstallAppsFlags.NONE);
+      var rc = plugin_loader.job_process (install_job, null);
       Gs.test_flush_main_context ();
       assert_true (rc);
 
@@ -168,9 +171,9 @@ namespace ApkPluginTest {
       // Execute remove action
       list.remove_all ();
       list.add (app);
-      plugin_job = new Gs.PluginJobUninstallApps (list,
-                                                  Gs.PluginUninstallAppsFlags.NONE);
-      rc = plugin_loader.job_action (plugin_job, null);
+      var uninstall_job = new Gs.PluginJobUninstallApps (list,
+                                                         Gs.PluginUninstallAppsFlags.NONE);
+      rc = plugin_loader.job_process (uninstall_job, null);
       Gs.test_flush_main_context ();
       assert_true (rc);
 
@@ -188,10 +191,10 @@ namespace ApkPluginTest {
       // Search for a non-installed app. Use a refine flag not being used
       // to force the run of the refine, but only fix the missing source
       var query = new Gs.AppQuery ("keywords", keywords,
-                                   "refine-flags", Gs.PluginRefineFlags.REQUIRE_KUDOS);
-      var plugin_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
-      plugin_loader.job_process (plugin_job, null);
-      var app = plugin_job.get_app ();
+                                   "refine-require-flags", Gs.PluginRefineRequireFlags.KUDOS);
+      var list_apps_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
+      plugin_loader.job_process (list_apps_job, null);
+      var app = list_apps_job.get_result_list ().index (0);
       Gs.test_flush_main_context ();
       assert (app != null);
       var plugin = app.dup_management_plugin () as Gs.Plugin;
@@ -200,7 +203,7 @@ namespace ApkPluginTest {
       // make sure we got the correct app, is managed by us and has the source set
       assert_cmpstr (app.get_id (), CompareOperator.EQ, "no-source-app.desktop");
       assert_cmpstr (plugin.get_name (), CompareOperator.EQ, "apk2");
-      assert_nonnull (app.get_source_default ());
+      assert_nonnull (app.get_default_source ());
     } catch (Error error) {
       assert_no_error (error);
     }

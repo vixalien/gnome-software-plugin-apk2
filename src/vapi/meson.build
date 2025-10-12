@@ -64,7 +64,7 @@ message(gnome_software_dep.get_variable('libdir'))
 
 gnome_software_gir = custom_target(
   # 'gnome-software',
-  output: 'Gs-49.gir',
+  output: 'Gs-49.raw.gir',
   command: [
     find_program('g-ir-scanner'),
     # '--warn-all',
@@ -89,9 +89,21 @@ gnome_software_gir = custom_target(
   install_dir: get_option('datadir') / 'gir-1.0',
 )
 
+gnome_software_gir_fixed = custom_target(
+  'gnome-software-gir-fixed',
+  command: [
+    find_program('sed'),
+    's|<type/>|<type name="utf8"/>|g',
+    '@INPUT@',
+  ],
+  input: gnome_software_gir,
+  capture: true,
+  output: 'Gs-49.gir',
+)
+
 gnome_software_vapi = gnome.generate_vapi(
   'gnome-software',
-  sources: gnome_software_gir.full_path(),
+  sources: gnome_software_gir_fixed.full_path(),
   metadata_dirs: meson.current_source_dir(),
   packages: [
     appstream_dep.name(),

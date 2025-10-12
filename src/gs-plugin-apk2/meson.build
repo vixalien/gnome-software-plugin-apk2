@@ -1,6 +1,6 @@
 plugin_install_dir = gnome_software_dep.get_variable(
   'plugindir',
-  default_value: '/usr/lib/gnome-software/plugins-20',
+  default_value: '/usr/lib/gnome-software/plugins-23',
 )
 
 plugin_apk_lib = library(

@@ -35,6 +35,9 @@ PluginLoader
   .setup.blocklist type="string[]"
   .setup cheader_filename="gs-plugin-loader-sync.h"
 
+PluginJobListApps
+  .get_result_list skip=false
+
 PluginError errordomain
 
 test_* cheader_filename="gs-test.h"
