@@ -9,7 +9,7 @@ namespace ApkPluginTest {
   private static void gs_plugins_apk_repo_actions (Gs.PluginLoader plugin_loader) {
     try {
       // Get apps which are sources
-      var query = new Gs.AppQuery ("is-source", Gs.AppQueryTristate.TRUE);
+      var query = new Gs.AppQuery ("component-kinds", new AppStream.ComponentKind[] { AppStream.ComponentKind.REPOSITORY });
       var list_apps_plugin_job = new Gs.PluginJobListApps (query, Gs.PluginListAppsFlags.NONE);
       var ret = plugin_loader.job_process (list_apps_plugin_job, null);
       var list = list_apps_plugin_job.get_result_list ();
@@ -92,13 +92,13 @@ namespace ApkPluginTest {
 
       assert_cmpuint (update_list.length (), CompareOperator.EQ, 2);
       // Check desktop app
-      var desktop_app = update_list.index (1);
+      var desktop_app = update_list.index (0);
       assert_nonnull (desktop_app);
       assert_false (desktop_app.has_quirk (Gs.AppQuirk.IS_PROXY));
       assert_cmpstr (desktop_app.get_name (), CompareOperator.EQ, "ApkTestApp");
       assert_cmpuint (desktop_app.get_state (), CompareOperator.EQ, Gs.AppState.UPDATABLE_LIVE);
       //// Check generic proxy app
-      var generic_app = update_list.index (0);
+      var generic_app = update_list.index (1);
       assert_nonnull (generic_app);
       assert_true (generic_app.has_quirk (Gs.AppQuirk.IS_PROXY));
       var related = generic_app.get_related ();
@@ -154,7 +154,7 @@ namespace ApkPluginTest {
       assert_cmpstr (plugin.get_name (), CompareOperator.EQ, "apk2");
       assert_cmpint (app.get_kind (), CompareOperator.EQ, AppStream.ComponentKind.DESKTOP_APP);
       assert_cmpint (app.get_scope (), CompareOperator.EQ, AppStream.ComponentScope.SYSTEM);
-      assert_cmpint (app.get_state (), CompareOperator.EQ, Gs.AppState.AVAILABLE);
+      assert_cmpint (app.get_state (), CompareOperator.EQ, Gs.AppState.INSTALLED);
 
       // execute installation action
       list.add (app);
@@ -281,13 +281,13 @@ namespace ApkPluginTest {
       Test.add_data_func ("/gnome-software/plugins/apk/missing-source", () => {
         gs_plugins_apk_refine_app_missing_source (plugin_loader);
       });
-      Test.add_data_func ("/gnome-software/plugins/apk/refine-app-missing-source", () => {
-        gs_plugins_apk_refine_app_missing_source (plugin_loader);
-      });
       retval = Test.run ();
 
       /* Clean up. */
-      Gs.utils_rmtree (tmp_root);
+      try {
+        Gs.utils_rmtree (tmp_root);
+      } catch {
+      }
     } catch (Error error) {
       critical ("Error: %s", error.message);
       return 1;

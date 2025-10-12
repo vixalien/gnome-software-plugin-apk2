@@ -35,7 +35,7 @@ test = executable(
     # '-DGSTEST_H',
     # '-g',
     # '-O0',
-    '-DLOCALPLUGINDIR="@0@"'.format(meson.project_build_root()),
+    '-DLOCALPLUGINDIR="@0@"'.format(fs.parent(plugin_apk_lib.full_path())),
     '-DSYSTEMPLUGINDIR="@0@"'.format(plugin_install_dir),
   ],
 )

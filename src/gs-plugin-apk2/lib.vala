@@ -257,9 +257,7 @@ public class GsPluginApk2 : Gs.Plugin {
     /* Currently only support a subset of query properties, and only one set at once.
      * This is a pattern taken from upstream!
      */
-    if (is_source == is_for_updates ||
-        is_source == false ||
-        is_for_updates == false) {
+    if (!(is_source ^ is_for_updates)) {
       throw new IOError.NOT_SUPPORTED ("Unsupported query");
     }
 
@@ -909,7 +907,7 @@ public class GsPluginApk2 : Gs.Plugin {
     repo.set_progress (GS_APP_PROGRESS_UNKNOWN);
 
     var url = repo.get_metadata_item ("apk::repo-url");
-    debug ("%ssing repository %s", action, url);
+    debug ("%sing repository %s", action, url);
 
     try {
       if (is_install) {
