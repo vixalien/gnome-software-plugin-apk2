@@ -4,7 +4,7 @@ soup_dep = dependency('libsoup-3.0')
 
 gnome_software_dep = dependency(
   'gnome-software',
-  version: '>=46.0',
+  version: '>=49.0',
   fallback: ['gnome-software', 'libgnomesoftware_dep'],
   default_options: [
     'malcontent=false',

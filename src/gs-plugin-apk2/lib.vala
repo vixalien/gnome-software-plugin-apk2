@@ -154,6 +154,7 @@ public class GsPluginApk2 : Gs.Plugin {
 
   public async override bool refresh_metadata_async (uint64 cache_age_secs,
                                                      Gs.PluginRefreshMetadataFlags flags,
+                                                     Gs.PluginEventCallback callback,
                                                      GLib.Cancellable? cancellable) throws Error {
     debug ("Refreshing repositories");
 
@@ -182,6 +183,7 @@ public class GsPluginApk2 : Gs.Plugin {
   public async override bool install_apps_async (Gs.AppList apps,
                                                  Gs.PluginInstallAppsFlags flags,
                                                  Gs.PluginProgressCallback progress_callback,
+                                                 Gs.PluginEventCallback event_callback,
                                                  Gs.PluginAppNeedsUserActionCallback app_needs_user_action_callback,
                                                  GLib.Cancellable? cancellable) throws Error {
     /* So far, the apk server only allows donwloading and installing all-together
@@ -243,24 +245,25 @@ public class GsPluginApk2 : Gs.Plugin {
 
   public async override Gs.AppList list_apps_async (Gs.AppQuery query,
                                                     Gs.PluginListAppsFlags flags,
+                                                    Gs.PluginEventCallback event_callback,
                                                     Cancellable? cancellable) throws Error {
     if (query == null) {
       throw new IOError.NOT_SUPPORTED ("Unsupported query");
     }
 
-    var is_source = query.get_is_source ();
-    var is_for_updates = query.get_is_for_update ();
+    var is_source = Gs.component_kind_array_contains (query.get_component_kinds (), AppStream.ComponentKind.REPOSITORY);
+    var is_for_updates = query.get_is_for_update () == TRUE;
 
     /* Currently only support a subset of query properties, and only one set at once.
      * This is a pattern taken from upstream!
      */
     if (is_source == is_for_updates ||
-        is_source == FALSE ||
-        is_for_updates == FALSE) {
+        is_source == false ||
+        is_for_updates == false) {
       throw new IOError.NOT_SUPPORTED ("Unsupported query");
     }
 
-    if (is_source == TRUE) {
+    if (is_source == true) {
       debug ("Listing repositories");
 
       unowned Variant out_repositories;
@@ -273,7 +276,7 @@ public class GsPluginApk2 : Gs.Plugin {
       }
 
       return list_repositories_cb (out_repositories);
-    } else if (is_for_updates == TRUE) {
+    } else if (is_for_updates == true) {
       /* I believe we have to invalidate the cache here! */
       debug ("Listing updates");
 
@@ -421,7 +424,7 @@ public class GsPluginApk2 : Gs.Plugin {
 
     if (app.get_origin () == null)
       app.set_origin ("alpine");
-    if (app.get_source_default () != package.name)
+    if (app.get_default_source () != package.name)
       app.add_source (package.name);
     app.set_management_plugin (this);
     app.set_bundle_kind (AppStream.BundleKind.PACKAGE);
@@ -429,6 +432,8 @@ public class GsPluginApk2 : Gs.Plugin {
 
   public async override bool refine_async (Gs.AppList list,
                                            Gs.PluginRefineFlags flags,
+                                           Gs.PluginRefineRequireFlags require_flags,
+                                           Gs.PluginEventCallback event_callback,
                                            GLib.Cancellable? cancellable) throws Error {
     var missing_pkgname_list = new Gs.AppList ();
     var refine_apps_list = new Gs.AppList ();
@@ -461,7 +466,7 @@ public class GsPluginApk2 : Gs.Plugin {
          * have an entry in the distribution-generated metadata. That should
          * be fixed in the app. We try to workaround it by finding the
          * owner of the metainfo or desktop file */
-        if (app.get_source_default () == null) {
+        if (app.get_default_source () == null) {
           debug ("App %s missing pkgname. Will try to resolve via metainfo/desktop file", app.get_unique_id ());
           missing_pkgname_list.add (app);
           continue;
@@ -493,7 +498,7 @@ public class GsPluginApk2 : Gs.Plugin {
          The alternative would be to have yet another app list. But since this
          is expected to happen very seldomly, it should be fine */
       if (app.get_state () == UNKNOWN) {
-        flags |= REQUIRE_SETUP_ACTION;
+        require_flags |= SETUP_ACTION;
       }
 
       debug ("Selecting app %s for refine", app.get_unique_id ());
@@ -509,7 +514,7 @@ public class GsPluginApk2 : Gs.Plugin {
       throw local_error;
     }
 
-    yield refine_apk_packages_cb (refine_apps_list, missing_pkgname_list, flags, cancellable);
+    yield refine_apk_packages_cb (refine_apps_list, missing_pkgname_list, flags, require_flags, cancellable);
 
     return true;
   }
@@ -585,15 +590,16 @@ public class GsPluginApk2 : Gs.Plugin {
   private async bool refine_apk_packages_cb (Gs.AppList list,
                                              Gs.AppList missing_pkgname_list,
                                              Gs.PluginRefineFlags flags,
+                                             Gs.PluginRefineRequireFlags require_flags,
                                              Cancellable? cancellable) throws Error {
-    if ((flags &
-         (Gs.PluginRefineFlags.REQUIRE_VERSION
-          | Gs.PluginRefineFlags.REQUIRE_ORIGIN
-          | Gs.PluginRefineFlags.REQUIRE_DESCRIPTION
-          | Gs.PluginRefineFlags.REQUIRE_SETUP_ACTION
-          | Gs.PluginRefineFlags.REQUIRE_SIZE
-          | Gs.PluginRefineFlags.REQUIRE_URL
-          | Gs.PluginRefineFlags.REQUIRE_LICENSE
+    if ((require_flags
+         & (Gs.PluginRefineRequireFlags.VERSION
+            | Gs.PluginRefineRequireFlags.ORIGIN
+            | Gs.PluginRefineRequireFlags.DESCRIPTION
+            | Gs.PluginRefineRequireFlags.SETUP_ACTION
+            | Gs.PluginRefineRequireFlags.SIZE
+            | Gs.PluginRefineRequireFlags.URL
+            | Gs.PluginRefineRequireFlags.LICENSE
          )) == 0
     ) {
       debug ("Ignoring refine");
@@ -602,7 +608,7 @@ public class GsPluginApk2 : Gs.Plugin {
 
     for (int i = 0; i < missing_pkgname_list.length (); i++) {
       var app = missing_pkgname_list.index (i);
-      if (app.get_source_default () != null) {
+      if (app.get_default_source () != null) {
         list.add (app);
       }
     }
@@ -613,22 +619,22 @@ public class GsPluginApk2 : Gs.Plugin {
 
     var details_flags = ApkPolkit2.DetailsFlags.PACKAGE_STATE;
 
-    if ((flags & Gs.PluginRefineFlags.REQUIRE_SETUP_ACTION) != 0) {
+    if ((require_flags & Gs.PluginRefineRequireFlags.SETUP_ACTION) != 0) {
       details_flags |= APK_POLKIT_CLIENT_DETAILS_FLAGS_ALL;
     }
-    if ((flags & Gs.PluginRefineFlags.REQUIRE_VERSION) != 0) {
+    if ((require_flags & Gs.PluginRefineRequireFlags.VERSION) != 0) {
       details_flags |= VERSION;
     }
-    if ((flags & Gs.PluginRefineFlags.REQUIRE_DESCRIPTION) != 0) {
+    if ((require_flags & Gs.PluginRefineRequireFlags.DESCRIPTION) != 0) {
       details_flags |= DESCRIPTION;
     }
-    if ((flags & Gs.PluginRefineFlags.REQUIRE_SIZE) != 0) {
+    if ((require_flags & Gs.PluginRefineRequireFlags.SIZE) != 0) {
       details_flags |= SIZE | INSTALLED_SIZE;
     }
-    if ((flags & Gs.PluginRefineFlags.REQUIRE_URL) != 0) {
+    if ((require_flags & Gs.PluginRefineRequireFlags.URL) != 0) {
       details_flags |= URL;
     }
-    if ((flags & Gs.PluginRefineFlags.REQUIRE_LICENSE) != 0) {
+    if ((require_flags & Gs.PluginRefineRequireFlags.LICENSE) != 0) {
       details_flags |= LICENSE;
     }
 
@@ -636,7 +642,7 @@ public class GsPluginApk2 : Gs.Plugin {
     for (int i = 0; i < list.length (); i++) {
       var app = list.index (i);
       debug ("Requesting details for %s", app.get_unique_id ());
-      source_array[i] = app.get_source_default ();
+      source_array[i] = app.get_default_source ();
     }
 
     GLib.Variant apk_pkgs;
@@ -655,7 +661,7 @@ public class GsPluginApk2 : Gs.Plugin {
       var apk_pkg_variant = apk_pkgs.get_child_value (i);
       var apk_pkg = ApkdPackage ();
 
-      var source = app.get_source_default ();
+      var source = app.get_default_source ();
       if (!apk_variant_to_apkd (apk_pkg_variant, ref apk_pkg)) {
         if (source != apk_pkg.name)
           warning ("source: '%s' and the pkg name: '%s' differ", source, apk_pkg.name);
@@ -743,6 +749,7 @@ public class GsPluginApk2 : Gs.Plugin {
   public async override bool update_apps_async (Gs.AppList apps,
                                                 Gs.PluginUpdateAppsFlags flags,
                                                 Gs.PluginProgressCallback progress_callback,
+                                                Gs.PluginEventCallback event_callback,
                                                 Gs.PluginAppNeedsUserActionCallback app_needs_user_action_callback,
                                                 GLib.Cancellable? cancellable) throws Error {
     debug ("Updating apps");
@@ -771,7 +778,7 @@ public class GsPluginApk2 : Gs.Plugin {
     string[] source_array = {};
     for (var i = 0; i < num_sources; i++) {
       var app = list_installing.index (i);
-      var source = app.get_source_default ();
+      var source = app.get_default_source ();
       if (source != null) {
         source_array += source;
         app.set_state (Gs.AppState.DOWNLOADING);
@@ -816,6 +823,7 @@ public class GsPluginApk2 : Gs.Plugin {
   public async override bool uninstall_apps_async (Gs.AppList list,
                                                    Gs.PluginUninstallAppsFlags flags,
                                                    Gs.PluginProgressCallback progress_callback,
+                                                   Gs.PluginEventCallback event_callback,
                                                    Gs.PluginAppNeedsUserActionCallback app_needs_user_action_callback,
                                                    GLib.Cancellable? cancellable) throws GLib.Error {
 
@@ -841,7 +849,7 @@ public class GsPluginApk2 : Gs.Plugin {
     string[] source_array = {};
     for (var i = 0; i < del_list.length (); i++) {
       var app = del_list.index (i);
-      var source = app.get_source_default ();
+      var source = app.get_default_source ();
       if (source != null) {
         source_array += source;
       }
@@ -869,6 +877,7 @@ public class GsPluginApk2 : Gs.Plugin {
 
   public async override bool install_repository_async (Gs.App repo,
                                                        Gs.PluginManageRepositoryFlags flags,
+                                                       Gs.PluginEventCallback event_callback,
                                                        GLib.Cancellable? cancellable) throws Error {
     assert (repo.get_kind () == AppStream.ComponentKind.REPOSITORY);
 
@@ -879,6 +888,7 @@ public class GsPluginApk2 : Gs.Plugin {
 
   public async override bool remove_repository_async (Gs.App repo,
                                                       Gs.PluginManageRepositoryFlags flags,
+                                                      Gs.PluginEventCallback event_callback,
                                                       GLib.Cancellable? cancellable) throws Error {
     assert (repo.get_kind () == AppStream.ComponentKind.REPOSITORY);
 

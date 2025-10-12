@@ -1,12 +1,17 @@
 Plugin
   .cache_lookup skip=false
   .get_system_bus_connection skip=false
+  .list_apps_async skip=false
   .list_apps_async throws="GLib.Error"
   .list_apps_async type="Gs.AppList"
   .install_apps_async skip=false
   .app_launch_filtered_async skip=false
   .update_apps_async skip=false
   .uninstall_apps_async skip=false
+  .refresh_metadata_async skip=false
+  .refine_async skip=false
+  .install_repository_async skip=false
+  .remove_repository_async skip=false
 
 App
   .get_sources skip=false
@@ -26,11 +31,8 @@ AppList
 PluginLoader
   .* cheader_filename="gs-plugin-loader.h"
   .job_process skip=false cheader_filename="gs-plugin-loader-sync.h"
-  .job_process_app skip=false cheader_filename="gs-plugin-loader-sync.h"
-  .setup.allowlist type="string[]" cheader_filename="gs-plugin-loader-sync.h"
-  .job_action cheader_filename="gs-plugin-loader-sync.h"
-  .app_create cheader_filename="gs-plugin-loader-sync.h"
-  .get_system_app cheader_filename="gs-plugin-loader-sync.h"
+  .setup.allowlist type="string[]"
+  .setup.blocklist type="string[]"
   .setup cheader_filename="gs-plugin-loader-sync.h"
 
 PluginError errordomain

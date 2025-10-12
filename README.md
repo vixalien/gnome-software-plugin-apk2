@@ -34,7 +34,7 @@ meson setup build
 
 cd build
 # please input these line by line (you only need to do this once)
-ninja src/vapi/Gs-48.gir
+ninja src/vapi/Gs-49.gir
 ninja src/vapi/ApkPolkit2-0.gir
 ninja src/vapi/gnome-software.vapi
 ninja src/vapi/apk-polkit-client-2.vapi
