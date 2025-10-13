@@ -154,7 +154,7 @@ namespace ApkPluginTest {
       assert_cmpstr (plugin.get_name (), CompareOperator.EQ, "apk2");
       assert_cmpint (app.get_kind (), CompareOperator.EQ, AppStream.ComponentKind.DESKTOP_APP);
       assert_cmpint (app.get_scope (), CompareOperator.EQ, AppStream.ComponentScope.SYSTEM);
-      assert_cmpint (app.get_state (), CompareOperator.EQ, Gs.AppState.INSTALLED);
+      assert_cmpint (app.get_state (), CompareOperator.EQ, Gs.AppState.AVAILABLE);
 
       // execute installation action
       list.add (app);
