@@ -1,7 +1,7 @@
 project(
   'gs-plugin-apk2',
   ['vala', 'c'],
-  version: '0.0.2',
+  version: '0.0.3',
 )
 
 valac = meson.get_compiler('vala')
